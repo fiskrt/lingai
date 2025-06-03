@@ -8,10 +8,12 @@ struct Word: Identifiable, Codable {
     let english: String
     let timestamp: Date
     var isLearned: Bool = false
+    var etymology: String = ""
     
-    init(german: String, english: String, timestamp: Date = Date()) {
+    init(german: String, english: String, etymology: String = "", timestamp: Date = Date()) {
         self.german = german
         self.english = english
+        self.etymology = etymology
         self.timestamp = timestamp
     }
 }
@@ -93,6 +95,73 @@ func translate(_ text: String, from sourceLanguage: String = "de", to targetLang
     return text
 }
 
+// MARK: - Word Detail View
+struct WordDetailView: View {
+    let word: Word
+    @Binding var isPresented: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Word Details")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                
+                Spacer()
+                
+                Button("✕") {
+                    isPresented = false
+                }
+                .font(.title2)
+                .foregroundColor(.secondary)
+            }
+            
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("German")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(word.german)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("English")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(word.english)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Etymology")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(word.etymology.isEmpty ? "No etymology information available" : word.etymology)
+                        .font(.body)
+                        .foregroundColor(word.etymology.isEmpty ? .secondary : .primary)
+                        .italic(word.etymology.isEmpty)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Added")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(word.timestamp.formatted(.dateTime.weekday().day().month().year().hour().minute()))
+                        .font(.body)
+                }
+            }
+        }
+        .padding(20)
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+        .frame(maxWidth: 350)
+    }
+}
+
 // MARK: - Word Input View
 struct WordInputView: View {
     @ObservedObject var wordManager: WordManager
@@ -101,6 +170,8 @@ struct WordInputView: View {
     @State private var isTranslating = false
     @State private var showSuccessMessage = false
     @State private var isGermanInput = true // Toggle for input language
+    @State private var selectedWord: Word?
+    @State private var showingWordDetail = false
     
     var body: some View {
         NavigationView {
@@ -125,7 +196,6 @@ struct WordInputView: View {
                             Toggle("", isOn: $isGermanInput)
                                 .labelsHidden()
                                 .scaleEffect(0.8)
-                                .tint(.red)
                                 .onChange(of: isGermanInput) { _ in
                                     inputText = ""
                                     translatedText = ""
@@ -213,6 +283,11 @@ struct WordInputView: View {
                                 .padding(.vertical, 4)
                                 .listRowBackground(Color.gray.opacity(0.05))
                                 .listRowSeparator(.hidden)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedWord = word
+                                    showingWordDetail = true
+                                }
                             }
                             .onDelete { indexSet in
                                 deleteRecentWords(at: indexSet)
@@ -221,12 +296,27 @@ struct WordInputView: View {
                         .listStyle(PlainListStyle())
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+                } else {
+                    Spacer()
                 }
-                
-                Spacer()
             }
             .padding()
             .navigationBarHidden(true)
+            .overlay(
+                Group {
+                    if showingWordDetail, let selectedWord = selectedWord {
+                        Color.black.opacity(0.4)
+                            .ignoresSafeArea()
+                            .onTapGesture {
+                                showingWordDetail = false
+                            }
+                        
+                        WordDetailView(word: selectedWord, isPresented: $showingWordDetail)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showingWordDetail)
+            )
         }
     }
     
@@ -332,6 +422,14 @@ struct VocabularyPracticeView: View {
                         Text("Add some words in the Input tab first!")
                             .font(.subheadline)
                             .foregroundColor(.gray)
+                        
+                        Text("Available words: \(wordManager.words.count)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        
+                        Text("Words in period: \(wordManager.getWordsForPeriod(days: selectedPeriod).count)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
                     .padding()
                 } else {
@@ -393,7 +491,8 @@ struct VocabularyPracticeView: View {
     }
     
     private func setupPracticeSession() {
-        practiceWords = wordManager.getWordsForPeriod(days: selectedPeriod).shuffled()
+        let availableWords = wordManager.getWordsForPeriod(days: selectedPeriod)
+        practiceWords = availableWords.shuffled()
         currentWordIndex = 0
         showingAnswer = false
         sessionScore = 0
@@ -432,6 +531,7 @@ struct FlashcardView: View {
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.5)
+                    .lineLimit(nil)
                 
                 if !showingAnswer {
                     Button("Show Answer") {
