@@ -106,7 +106,7 @@ struct WordDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(word.german)
-                    .font(.headline)
+                    .font(.title)
                     .fontWeight(.bold)
                 
                 Spacer()
@@ -119,17 +119,9 @@ struct WordDetailView: View {
             }
             
             VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("German")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    Text(word.german)
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("English")
+                    Text("Meaning")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     Text(word.english)
@@ -178,9 +170,6 @@ struct WordDetailView: View {
 struct WordInputView: View {
     @ObservedObject var wordManager: WordManager
     @State private var inputText = ""
-    @State private var translatedText = ""
-    @State private var isTranslating = false
-    @State private var showSuccessMessage = false
     @State private var isGermanInput = true // Toggle for input language
     @State private var selectedWord: Word?
     @State private var showingWordDetail = false
@@ -188,14 +177,14 @@ struct WordInputView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                Text("Add New Words!")
+                Text("Add a memory")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .padding(.top)
                 
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("\(isGermanInput ? "German" : "English") Word")
+                        Text("\(isGermanInput ? "German" : "English") input")
                             .font(.headline)
                         
                         Spacer()
@@ -210,7 +199,6 @@ struct WordInputView: View {
                                 .scaleEffect(0.8)
                                 .onChange(of: isGermanInput) { _ in
                                     inputText = ""
-                                    translatedText = ""
                                 }
                             
                             Text("DE")
@@ -219,25 +207,9 @@ struct WordInputView: View {
                         }
                     }
                     
-                    TextField("Enter \(isGermanInput ? "German" : "English") word...", text: $inputText)
+                    TextField("Enter \(isGermanInput ? "German" : "English")...", text: $inputText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .autocorrectionDisabled(true)
-                        .onChange(of: inputText) { _ in
-                            translateWord()
-                        }
-                }
-                
-                if !translatedText.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("\(isGermanInput ? "English" : "German") Translation")
-                            .font(.headline)
-                        
-                        Text(translatedText)
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
-                    }
                 }
                 
                 Button(action: saveWord) {
@@ -253,12 +225,6 @@ struct WordInputView: View {
                     .cornerRadius(10)
                 }
                 .disabled(inputText.isEmpty)
-                
-                if showSuccessMessage {
-                    Text("Word saved successfully!")
-                        .foregroundColor(.green)
-                        .font(.subheadline)
-                }
                 
                 // Recent words section
                 if !wordManager.words.isEmpty {
@@ -332,28 +298,18 @@ struct WordInputView: View {
         }
     }
     
-    private func translateWord() {
-        guard !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            translatedText = ""
-            return
-        }
-        
-        isTranslating = true
-        // Simulate slight delay for translation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-            if isGermanInput {
-                translatedText = translate(trimmedInput, from: "de", to: "en")
-            } else {
-                translatedText = translate(trimmedInput, from: "en", to: "de")
-            }
-            isTranslating = false
-        }
-    }
-    
     private func saveWord() {
         let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else { return }
+        
+        // Translate the word when saving
+        let translatedText: String
+        if isGermanInput {
+            translatedText = translate(trimmedInput, from: "de", to: "en")
+            //
+        } else {
+            translatedText = translate(trimmedInput, from: "en", to: "de")
+        }
         
         let newWord: Word
         if isGermanInput {
@@ -362,15 +318,16 @@ struct WordInputView: View {
             newWord = Word(german: translatedText, english: trimmedInput)
         }
         
-        wordManager.addWord(newWord)
+        Task {
+            do {
+                let a = try await translate_llm(phrase: trimmedInput, isGerman: isGermanInput)
+                wordManager.addWord(Word(german: trimmedInput, english: a.trans, etymology: a.etym))
+            } catch {
+                print("Error calling mistralChat: \(error)")
+            }
+        }
         
         inputText = ""
-        translatedText = ""
-        showSuccessMessage = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            showSuccessMessage = false
-        }
     }
     
     private func deleteRecentWords(at offsets: IndexSet) {
