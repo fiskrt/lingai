@@ -9,11 +9,13 @@ struct Word: Identifiable, Codable {
     let timestamp: Date
     var isLearned: Bool = false
     var etymology: String = ""
+    var synonyms: String = ""
     
-    init(german: String, english: String, etymology: String = "", timestamp: Date = Date()) {
+    init(german: String, english: String, etymology: String = "", synonyms: String = "", timestamp: Date = Date()) {
         self.german = german
         self.english = english
         self.etymology = etymology
+        self.synonyms = synonyms
         self.timestamp = timestamp
     }
 }
@@ -103,7 +105,7 @@ struct WordDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Word Details")
+                Text(word.german)
                     .font(.headline)
                     .fontWeight(.bold)
                 
@@ -133,6 +135,16 @@ struct WordDetailView: View {
                     Text(word.english)
                         .font(.title2)
                         .fontWeight(.semibold)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Synonyms")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(word.synonyms.isEmpty ? "No synonyms available" : word.synonyms)
+                        .font(.body)
+                        .foregroundColor(word.synonyms.isEmpty ? .secondary : .primary)
+                        .italic(word.synonyms.isEmpty)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -532,6 +544,7 @@ struct FlashcardView: View {
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.5)
                     .lineLimit(nil)
+                    .foregroundColor(Color(UIColor.label))
                 
                 if !showingAnswer {
                     Button("Show Answer") {
@@ -546,9 +559,9 @@ struct FlashcardView: View {
             }
             .frame(maxWidth: .infinity, minHeight: 200)
             .padding()
-            .background(Color.white)
+            .background(Color(UIColor.systemBackground))
             .cornerRadius(15)
-            .shadow(color: .gray.opacity(0.3), radius: 5, x: 0, y: 2)
+            .shadow(color: Color(UIColor.systemGray4), radius: 5, x: 0, y: 2)
             
             // Answer buttons
             if showingAnswer {
