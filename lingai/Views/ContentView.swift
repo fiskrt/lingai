@@ -110,38 +110,32 @@ struct WordInputView: View {
                     .fontWeight(.bold)
                     .padding(.top)
                 
-                // Language toggle section
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("Input Language:")
-                            .font(.headline)
-                        Spacer()
-                    }
-                    
-                    HStack {
-                        Text("English")
-                            .font(.subheadline)
-                            .foregroundColor(isGermanInput ? .secondary : .primary)
-                        
-                        Toggle("", isOn: $isGermanInput)
-                            .labelsHidden()
-                            .onChange(of: isGermanInput) { _ in
-                                inputText = ""
-                                translatedText = ""
-                            }
-                        
-                        Text("German")
-                            .font(.subheadline)
-                            .foregroundColor(isGermanInput ? .primary : .secondary)
-                    }
-                }
-                .padding()
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(10)
-                
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("\(isGermanInput ? "German" : "English") Word")
-                        .font(.headline)
+                    HStack {
+                        Text("\(isGermanInput ? "German" : "English") Word")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 8) {
+                            Text("EN")
+                                .font(.caption)
+                                .foregroundColor(isGermanInput ? .secondary : .primary)
+                            
+                            Toggle("", isOn: $isGermanInput)
+                                .labelsHidden()
+                                .scaleEffect(0.8)
+                                .tint(.red)
+                                .onChange(of: isGermanInput) { _ in
+                                    inputText = ""
+                                    translatedText = ""
+                                }
+                            
+                            Text("DE")
+                                .font(.caption)
+                                .foregroundColor(isGermanInput ? .primary : .secondary)
+                        }
+                    }
                     
                     TextField("Enter \(isGermanInput ? "German" : "English") word...", text: $inputText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -186,7 +180,7 @@ struct WordInputView: View {
                 
                 // Recent words section
                 if !wordManager.words.isEmpty {
-                    VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 0) {
                         HStack {
                             Text("Recent Words")
                                 .font(.headline)
@@ -197,9 +191,10 @@ struct WordInputView: View {
                                 .foregroundColor(.secondary)
                                 .padding(.top)
                         }
+                        .padding(.bottom, 8)
                         
                         List {
-                            ForEach(Array(wordManager.words.suffix(5).reversed())) { word in
+                            ForEach(Array(wordManager.words.suffix(10).reversed())) { word in
                                 HStack {
                                     VStack(alignment: .leading) {
                                         Text(word.german)
@@ -224,7 +219,7 @@ struct WordInputView: View {
                             }
                         }
                         .listStyle(PlainListStyle())
-                        .frame(height: min(CGFloat(wordManager.words.suffix(5).count) * 70, 350))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
                 
@@ -277,7 +272,7 @@ struct WordInputView: View {
     }
     
     private func deleteRecentWords(at offsets: IndexSet) {
-        let recentWords = Array(wordManager.words.suffix(5).reversed())
+        let recentWords = Array(wordManager.words.suffix(10).reversed())
         let wordsToDelete = offsets.map { recentWords[$0] }
         
         for wordToDelete in wordsToDelete {
