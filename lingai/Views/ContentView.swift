@@ -32,6 +32,16 @@ class WordManager: ObservableObject {
         saveWords()
     }
     
+    func deleteWord(at offsets: IndexSet) {
+        words.remove(atOffsets: offsets)
+        saveWords()
+    }
+    
+    func deleteWord(withId id: UUID) {
+        words.removeAll { $0.id == id }
+        saveWords()
+    }
+    
     func markAsLearned(_ word: Word) {
         if let index = words.firstIndex(where: { $0.id == word.id }) {
             words[index].isLearned.toggle()
@@ -62,7 +72,7 @@ class WordManager: ObservableObject {
 func translate(_ text: String, from sourceLanguage: String = "de", to targetLanguage: String = "en") -> String {
     // This is your perfect translation function
     // For demo purposes, I'll add some basic translations
-    let translations = [
+    let translations: [String: String] = [
         "blumen": "flowers",
         "haus": "house",
         "katze": "cat",
@@ -90,20 +100,50 @@ struct WordInputView: View {
     @State private var translatedText = ""
     @State private var isTranslating = false
     @State private var showSuccessMessage = false
+    @State private var isGermanInput = true // Toggle for input language
     
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                Text("Add New Words")
+                Text("Add New Words!")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .padding(.top)
                 
+                // Language toggle section
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Input Language:")
+                            .font(.headline)
+                        Spacer()
+                    }
+                    
+                    HStack {
+                        Text("English")
+                            .font(.subheadline)
+                            .foregroundColor(isGermanInput ? .secondary : .primary)
+                        
+                        Toggle("", isOn: $isGermanInput)
+                            .labelsHidden()
+                            .onChange(of: isGermanInput) { _ in
+                                inputText = ""
+                                translatedText = ""
+                            }
+                        
+                        Text("German")
+                            .font(.subheadline)
+                            .foregroundColor(isGermanInput ? .primary : .secondary)
+                    }
+                }
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(10)
+                
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("German Word")
+                    Text("\(isGermanInput ? "German" : "English") Word")
                         .font(.headline)
                     
-                    TextField("Enter German word...", text: $inputText)
+                    TextField("Enter \(isGermanInput ? "German" : "English") word...", text: $inputText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .autocorrectionDisabled(true)
                         .onChange(of: inputText) { _ in
@@ -113,7 +153,7 @@ struct WordInputView: View {
                 
                 if !translatedText.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("English Translation")
+                        Text("\(isGermanInput ? "English" : "German") Translation")
                             .font(.headline)
                         
                         Text(translatedText)
@@ -147,11 +187,18 @@ struct WordInputView: View {
                 // Recent words section
                 if !wordManager.words.isEmpty {
                     VStack(alignment: .leading) {
-                        Text("Recent Words")
-                            .font(.headline)
-                            .padding(.top)
+                        HStack {
+                            Text("Recent Words")
+                                .font(.headline)
+                                .padding(.top)
+                            Spacer()
+                            Text("Swipe left to delete")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .padding(.top)
+                        }
                         
-                        LazyVStack {
+                        List {
                             ForEach(Array(wordManager.words.suffix(5).reversed())) { word in
                                 HStack {
                                     VStack(alignment: .leading) {
@@ -168,11 +215,16 @@ struct WordInputView: View {
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
-                                .padding()
-                                .background(Color.gray.opacity(0.05))
-                                .cornerRadius(8)
+                                .padding(.vertical, 4)
+                                .listRowBackground(Color.gray.opacity(0.05))
+                                .listRowSeparator(.hidden)
+                            }
+                            .onDelete { indexSet in
+                                deleteRecentWords(at: indexSet)
                             }
                         }
+                        .listStyle(PlainListStyle())
+                        .frame(height: min(CGFloat(wordManager.words.suffix(5).count) * 70, 350))
                     }
                 }
                 
@@ -192,7 +244,12 @@ struct WordInputView: View {
         isTranslating = true
         // Simulate slight delay for translation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            translatedText = translate(inputText.trimmingCharacters(in: .whitespacesAndNewlines))
+            let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if isGermanInput {
+                translatedText = translate(trimmedInput, from: "de", to: "en")
+            } else {
+                translatedText = translate(trimmedInput, from: "en", to: "de")
+            }
             isTranslating = false
         }
     }
@@ -201,7 +258,13 @@ struct WordInputView: View {
         let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else { return }
         
-        let newWord = Word(german: trimmedInput, english: translatedText)
+        let newWord: Word
+        if isGermanInput {
+            newWord = Word(german: trimmedInput, english: translatedText)
+        } else {
+            newWord = Word(german: translatedText, english: trimmedInput)
+        }
+        
         wordManager.addWord(newWord)
         
         inputText = ""
@@ -210,6 +273,15 @@ struct WordInputView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             showSuccessMessage = false
+        }
+    }
+    
+    private func deleteRecentWords(at offsets: IndexSet) {
+        let recentWords = Array(wordManager.words.suffix(5).reversed())
+        let wordsToDelete = offsets.map { recentWords[$0] }
+        
+        for wordToDelete in wordsToDelete {
+            wordManager.deleteWord(withId: wordToDelete.id)
         }
     }
 }
@@ -516,5 +588,3 @@ struct ContentView: View {
         .accentColor(.blue)
     }
 }
-
-// MARK: - App Entry Point
