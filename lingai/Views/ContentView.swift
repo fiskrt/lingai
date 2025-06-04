@@ -72,111 +72,192 @@ class WordManager: ObservableObject {
     }
 }
 
+// MARK: - Custom Colors and Styles
+extension Color {
+    static let duoGreen = Color(red: 0.33, green: 0.78, blue: 0.32)
+    static let duoBlue = Color(red: 0.11, green: 0.63, blue: 0.94)
+    static let duoOrange = Color(red: 1.0, green: 0.57, blue: 0.0)
+    static let duoPurple = Color(red: 0.51, green: 0.29, blue: 0.96)
+    static let duoYellow = Color(red: 1.0, green: 0.84, blue: 0.0)
+    static let duoRed = Color(red: 0.94, green: 0.33, blue: 0.31)
+    
+    // Adaptive colors for dark/light mode
+    static let cardBackground = Color(UIColor.secondarySystemBackground)
+    static let primaryText = Color(UIColor.label)
+    static let secondaryText = Color(UIColor.secondaryLabel)
+    static let surfaceBackground = Color(UIColor.systemBackground)
+}
+
 // MARK: - Word Detail View
 struct WordDetailView: View {
     let word: Word
     @Binding var isPresented: Bool
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header with close button
             HStack {
-                Text(word.german)
-                    .font(.title)
-                    .fontWeight(.bold)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(word.german)
+                        .font(.title.bold())
+                        .foregroundColor(.duoBlue)
+                    
+                    Text("Word Details")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
                 
                 Spacer()
                 
-                Button("✕") {
-                    isPresented = false
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        isPresented = false
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.gray)
+                        .background(Color.white)
+                        .clipShape(Circle())
                 }
-                .font(.title2)
-                .foregroundColor(.secondary)
             }
             
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(spacing: 16) {
+                // Meaning Card
+                InfoCard(
+                    icon: "globe",
+                    title: "Meaning",
+                    content: word.english,
+                    accentColor: .duoGreen
+                )
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Meaning")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    Text(word.english)
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                }
+                // Synonyms Card
+                InfoCard(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "Synonyms",
+                    content: word.synonyms.isEmpty ? "No synonyms available" : word.synonyms,
+                    accentColor: .duoOrange,
+                    isEmpty: word.synonyms.isEmpty
+                )
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Synonyms")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    Text(word.synonyms.isEmpty ? "No synonyms available" : word.synonyms)
-                        .font(.body)
-                        .foregroundColor(word.synonyms.isEmpty ? .secondary : .primary)
-                        .italic(word.synonyms.isEmpty)
-                }
+                // Etymology Card
+                InfoCard(
+                    icon: "book.closed",
+                    title: "Etymology",
+                    content: word.etymology.isEmpty ? "No etymology information available" : word.etymology,
+                    accentColor: .duoPurple,
+                    isEmpty: word.etymology.isEmpty
+                )
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Etymology")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    Text(word.etymology.isEmpty ? "No etymology information available" : word.etymology)
-                        .font(.body)
-                        .foregroundColor(word.etymology.isEmpty ? .secondary : .primary)
-                        .italic(word.etymology.isEmpty)
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Added")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    Text(word.timestamp.formatted(.dateTime.weekday().day().month().year().hour().minute()))
-                        .font(.body)
-                }
+                // Date Added Card
+                InfoCard(
+                    icon: "calendar",
+                    title: "Added",
+                    content: word.timestamp.formatted(.dateTime.weekday().day().month().year()),
+                    accentColor: .duoBlue
+                )
             }
         }
-        .padding(20)
-        .background(Color(UIColor.systemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-        .frame(maxWidth: 350)
+        .padding(24)
+        .background(
+            RoundedRectangle(cornerRadius: 24)
+                .fill(Color(UIColor.systemBackground))
+                .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
+        )
+        .frame(maxWidth: 380)
     }
 }
 
+struct InfoCard: View {
+    let icon: String
+    let title: String
+    let content: String
+    let accentColor: Color
+    var isEmpty: Bool = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 36, height: 36)
+                .background(
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [accentColor, accentColor.opacity(0.8)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                )
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption.bold())
+                    .foregroundColor(.secondary)
+                    .textCase(.uppercase)
+                
+                Text(content)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(isEmpty ? .secondaryText : .primaryText)
+                    .italic(isEmpty)
+            }
+            
+            Spacer()
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(accentColor.opacity(0.2), lineWidth: 1)
+                )
+        )
+    }
+}
 
-
+// MARK: - Enhanced Toggle
 struct EnDeToggle: View {
     @Binding var isGermanInput: Bool
     
     var body: some View {
-        // Background track
-        ZStack {
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: 55, height: 30)
+        HStack(spacing: 0) {
+            // English side
+            Text("EN")
+                .font(.caption.bold())
+                .foregroundColor(isGermanInput ? .secondaryText : .white)
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle()
+                        .fill(isGermanInput ? Color.clear : Color.duoBlue)
+                        .scaleEffect(isGermanInput ? 0.8 : 1.0)
+                )
             
-            // Knob with text inside
-            HStack {
-                if isGermanInput {
-                    Spacer()
-                }
-                
-                Text(isGermanInput ? "DE" : "EN")
-                    .font(.caption2.bold())
-                    .foregroundColor(.white)
-                    .frame(width: 30, height: 30)
-                    .background(Color.accentColor)
-                    .clipShape(Circle())
-                    .shadow(radius: 1)
-                
-                if !isGermanInput {
-                    Spacer()
-                }
-            }
-            .padding(2)
-            .frame(width: 70, height: 30)
-            .animation(.easeInOut(duration: 0.2), value: isGermanInput)
+            // German side
+            Text("DE")
+                .font(.caption.bold())
+                .foregroundColor(isGermanInput ? .white : .secondaryText)
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle()
+                        .fill(isGermanInput ? Color.duoGreen : Color.clear)
+                        .scaleEffect(isGermanInput ? 1.0 : 0.8)
+                )
         }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.gray.opacity(0.2))
+        )
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isGermanInput)
         .onTapGesture {
-            isGermanInput.toggle()
+            withAnimation {
+                isGermanInput.toggle()
+            }
         }
     }
 }
@@ -185,99 +266,164 @@ struct EnDeToggle: View {
 struct WordInputView: View {
     @ObservedObject var wordManager: WordManager
     @State private var inputText = ""
-    @State private var isGermanInput = true // Toggle for input language
+    @State private var isGermanInput = true
     @State private var selectedWord: Word?
     @State private var showingWordDetail = false
+    @State private var showSuccessAnimation = false
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
+            ZStack {
+                // Background gradient
+                LinearGradient(
+                    colors: [Color.duoBlue.opacity(0.1), Color.duoGreen.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
-                Text("Add a memory")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .padding(.top)
-                
-                HStack {
-                        TextField("Enter \(isGermanInput ? "German" : "English")...", text: $inputText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .autocorrectionDisabled(true)
+                VStack(spacing: 16) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.system(size: 40))
+                            .foregroundColor(.duoBlue)
                         
-                        Spacer()
+                        Text("Add a Memory")
+                            .font(.largeTitle.bold())
+                            .foregroundColor(.primaryText)
                         
-                        EnDeToggle(isGermanInput: $isGermanInput)
-                        .scaleEffect(0.8)
-                }
-                    
-                    
-                
-                Button(action: saveWord) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Save Word")
+                        Text("Expand your vocabulary")
+                            .font(.subheadline)
+                            .foregroundColor(.secondaryText)
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(inputText.isEmpty ? Color.gray : Color.blue)
-                    .cornerRadius(10)
-                }
-                .disabled(inputText.isEmpty)
-                
-                // Recent words section
-                if !wordManager.words.isEmpty {
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack {
-                            Text("Recent Words")
-                                .font(.headline)
-                                .padding(.top)
-                            Spacer()
-                            Text("Swipe left to delete")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.top)
+                    .padding(.top, 20)
+                    
+                    // Input Card
+                    VStack(spacing: 20) {
+                        HStack(spacing: 16) {
+                            // Input field
+                            HStack {
+                                Image(systemName: isGermanInput ? "flag.fill" : "flag")
+                                    .foregroundColor(isGermanInput ? .duoGreen : .duoBlue)
+                                    .font(.system(size: 16))
+                                
+                                TextField("Enter \(isGermanInput ? "German" : "English") word...", text: $inputText)
+                                    .font(.body.weight(.medium))
+                                    .autocorrectionDisabled(true)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.surfaceBackground)
+                                    .stroke(Color.duoBlue.opacity(0.3), lineWidth: 2)
+                            )
+                            
+                            // Language toggle
+                            EnDeToggle(isGermanInput: $isGermanInput)
                         }
-                        .padding(.bottom, 8)
                         
-                        List {
-                            ForEach(Array(wordManager.words.suffix(10).reversed())) { word in
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text(word.german)
-                                            .font(.headline)
-                                        Text(word.english)
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    Text(word.timestamp.formatted(.dateTime.day().month().hour().minute()))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.vertical, 4)
-                                .listRowBackground(Color.gray.opacity(0.05))
-                                .listRowSeparator(.hidden)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    selectedWord = word
-                                    showingWordDetail = true
-                                }
+                        // Save button
+                        Button(action: saveWord) {
+                            HStack(spacing: 8) {
+                                Image(systemName: showSuccessAnimation ? "checkmark.circle.fill" : "plus.circle.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                
+                                Text(showSuccessAnimation ? "Saved!" : "Save Word")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
                             }
-                            .onDelete { indexSet in
-                                deleteRecentWords(at: indexSet)
-                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: inputText.isEmpty ? [.gray] : [.duoGreen, .duoBlue],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
+                            .scaleEffect(showSuccessAnimation ? 1.05 : 1.0)
+                            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: showSuccessAnimation)
                         }
-                        .listStyle(PlainListStyle())
+                        .disabled(inputText.isEmpty)
+                    }
+                    .padding(20)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(Color.cardBackground)
+                            .shadow(color: .duoBlue.opacity(0.1), radius: 10, x: 0, y: 5)
+                    )
+                    
+                    // Recent Words Section
+                    if !wordManager.words.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Recent Words")
+                                        .font(.title2.bold())
+                                        .foregroundColor(.primaryText)
+                                    
+                                    Text("Tap to view details • Swipe to delete")
+                                        .font(.caption)
+                                        .foregroundColor(.secondaryText)
+                                }
+                                
+                                Spacer()
+                                
+                                Text("\(wordManager.words.count)")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.duoOrange)
+                                    )
+                            }
+                            
+                            List {
+                                ForEach(Array(wordManager.words.suffix(10).reversed())) { word in
+                                    WordRowView(word: word) {
+                                        selectedWord = word
+                                        showingWordDetail = true
+                                    }
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                }
+                                .onDelete { indexSet in
+                                    deleteRecentWords(at: indexSet)
+                                }
+                            }
+                            .listStyle(PlainListStyle())
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    } else {
+                        // Empty state
+                        VStack(spacing: 16) {
+                            Image(systemName: "book.closed")
+                                .font(.system(size: 60))
+                                .foregroundColor(.duoBlue.opacity(0.6))
+                            
+                            Text("No words yet!")
+                                .font(.title2.bold())
+                                .foregroundColor(.primaryText)
+                            
+                            Text("Add your first word above to get started")
+                                .font(.body)
+                                .foregroundColor(.secondaryText)
+                                .multilineTextAlignment(.center)
+                        }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                } else {
-                    Spacer()
                 }
+                .padding(.horizontal, 20)
             }
-            .padding()
             .navigationBarHidden(true)
             .overlay(
                 Group {
@@ -301,16 +447,38 @@ struct WordInputView: View {
         let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else { return }
         
-        Task {
-            do {
-                let a = try await translate_llm(phrase: trimmedInput, isGerman: isGermanInput)
-                wordManager.addWord(Word(german: trimmedInput, english: a.trans, etymology: a.etym))
-            } catch {
-                print("Error calling mistralChat: \(error)")
-                wordManager.addWord(Word(german: trimmedInput, english: ""))
+        // Show success animation
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+            showSuccessAnimation = true
+        }
+        
+        // Reset animation after delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
+                showSuccessAnimation = false
             }
         }
         
+        // Add word logic using your translate_llm function
+        Task {
+            do {
+                let result = try await translate_llm(phrase: trimmedInput, isGerman: isGermanInput)
+                let newWord = Word(
+                    german: isGermanInput ? trimmedInput : result.trans,
+                    english: isGermanInput ? result.trans : trimmedInput,
+                    etymology: result.etym
+                )
+                wordManager.addWord(newWord)
+            } catch {
+                print("Error calling translate_llm: \(error)")
+                // Fallback on error
+                let newWord = Word(
+                    german: isGermanInput ? trimmedInput : "",
+                    english: isGermanInput ? "" : trimmedInput
+                )
+                wordManager.addWord(newWord)
+            }
+        }
         inputText = ""
     }
     
@@ -321,6 +489,60 @@ struct WordInputView: View {
         for wordToDelete in wordsToDelete {
             wordManager.deleteWord(withId: wordToDelete.id)
         }
+    }
+}
+
+// MARK: - Word Row View
+struct WordRowView: View {
+    let word: Word
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                // Flag icon
+                Image(systemName: "flag.fill")
+                    .font(.system(size: 16))
+                    .foregroundColor(.duoGreen)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(Color.duoGreen.opacity(0.1))
+                    )
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(word.german)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primaryText)
+                    
+                    Text(word.english)
+                        .font(.subheadline)
+                        .foregroundColor(.secondaryText)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(word.timestamp.formatted(.dateTime.day().month()))
+                        .font(.caption)
+                        .foregroundColor(.secondaryText)
+                    
+                    if word.isLearned {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.duoGreen)
+                    }
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.surfaceBackground)
+                    .shadow(color: .duoBlue.opacity(0.08), radius: 8, x: 0, y: 2)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -338,104 +560,151 @@ struct VocabularyPracticeView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 20) {
-                Text("Vocabulary Practice")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
+            ZStack {
+                // Background gradient
+                LinearGradient(
+                    colors: [Color.duoPurple.opacity(0.1), Color.duoBlue.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
-                // Period selector
-                VStack {
-                    Text("Practice words from the last:")
-                        .font(.headline)
+                VStack(spacing: 24) {
+                    // Header
+                    VStack(spacing: 4) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.system(size: 32))
+                            .foregroundColor(.duoPurple)
+                        
+                        Text("Practice Time!")
+                            .font(.title.bold())
+                            .foregroundColor(.primaryText)
+                        
+                        Text("Test your knowledge")
+                            .font(.caption)
+                            .foregroundColor(.secondaryText)
+                    }
+                    .padding(.top, 12)
                     
-                    Picker("Time Period", selection: $selectedPeriod) {
-                        ForEach(periodOptions, id: \.self) { days in
-                            Text("\(days) day\(days == 1 ? "" : "s")")
+                    // Period selector
+                    VStack(spacing: 12) {
+                        Text("Practice words from the last:")
+                            .font(.subheadline)
+                            .foregroundColor(.primaryText)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(periodOptions, id: \.self) { days in
+                                    PeriodButton(
+                                        days: days,
+                                        isSelected: selectedPeriod == days
+                                    ) {
+                                        selectedPeriod = days
+                                        setupPracticeSession()
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
                         }
                     }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .onChange(of: selectedPeriod) { _ in
-                        setupPracticeSession()
-                    }
-                }
-                .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(10)
-                
-                if practiceWords.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: "book.closed")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                        
-                        Text("No words to practice")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        
-                        Text("Add some words in the Input tab first!")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                        
-                        Text("Available words: \(wordManager.words.count)")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        
-                        Text("Words in period: \(wordManager.getWordsForPeriod(days: selectedPeriod).count)")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                    .padding()
-                } else {
-                    // Score display
-                    HStack {
-                        Text("Score: \(sessionScore)/\(totalAnswered)")
-                            .font(.headline)
-                        
-                        Spacer()
-                        
-                        Text("Card \(currentWordIndex + 1) of \(practiceWords.count)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
-                    
-                    // Flashcard
-                    FlashcardView(
-                        word: practiceWords[currentWordIndex],
-                        showingAnswer: $showingAnswer,
-                        onCorrect: handleCorrect,
-                        onIncorrect: handleIncorrect
+                    .padding(16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.cardBackground)
+                            .shadow(color: .duoPurple.opacity(0.1), radius: 8, x: 0, y: 4)
                     )
                     
-                    // Navigation buttons
-                    HStack(spacing: 20) {
-                        Button("Previous") {
-                            if currentWordIndex > 0 {
-                                currentWordIndex -= 1
-                                showingAnswer = false
+                    if practiceWords.isEmpty {
+                        // Empty state
+                        VStack(spacing: 20) {
+                            Image(systemName: "book.closed")
+                                .font(.system(size: 60))
+                                .foregroundColor(.duoPurple.opacity(0.6))
+                            
+                            Text("No words to practice")
+                                .font(.title2.bold())
+                                .foregroundColor(.primaryText)
+                            
+                            Text("Add some words in the Add tab first!")
+                                .font(.body)
+                                .foregroundColor(.secondaryText)
+                            
+                            VStack(spacing: 4) {
+                                Text("Available words: \(wordManager.words.count)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondaryText)
+                                
+                                Text("Words in period: \(wordManager.getWordsForPeriod(days: selectedPeriod).count)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondaryText)
                             }
                         }
-                        .disabled(currentWordIndex == 0)
-                        
-                        Spacer()
-                        
-                        Button("Next") {
-                            if currentWordIndex < practiceWords.count - 1 {
-                                currentWordIndex += 1
-                                showingAnswer = false
-                            } else {
-                                // Reset session
-                                setupPracticeSession()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        // Practice session
+                        VStack(spacing: 16) {
+                            // Progress and score
+                            HStack {
+                                ProgressCard(
+                                    title: "Score",
+                                    value: "\(sessionScore)/\(totalAnswered)",
+                                    color: .duoGreen
+                                )
+                                
+                                Spacer()
+                                
+                                ProgressCard(
+                                    title: "Progress",
+                                    value: "\(currentWordIndex + 1)/\(practiceWords.count)",
+                                    color: .duoBlue
+                                )
+                            }
+                            
+                            // Flashcard
+                            FlashcardView(
+                                word: practiceWords[currentWordIndex],
+                                showingAnswer: $showingAnswer,
+                                onCorrect: handleCorrect,
+                                onIncorrect: handleIncorrect
+                            )
+                            
+                            // Navigation buttons
+                            HStack(spacing: 16) {
+                                NavigationButton(
+                                    title: "Previous",
+                                    icon: "chevron.left",
+                                    isDisabled: currentWordIndex == 0,
+                                    color: .gray
+                                ) {
+                                    if currentWordIndex > 0 {
+                                        currentWordIndex -= 1
+                                        showingAnswer = false
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                NavigationButton(
+                                    title: currentWordIndex < practiceWords.count - 1 ? "Next" : "Restart",
+                                    icon: "chevron.right",
+                                    isDisabled: false,
+                                    color: .duoBlue
+                                ) {
+                                    if currentWordIndex < practiceWords.count - 1 {
+                                        currentWordIndex += 1
+                                        showingAnswer = false
+                                    } else {
+                                        setupPracticeSession()
+                                    }
+                                }
                             }
                         }
-                        .foregroundColor(.blue)
                     }
-                    .padding()
+                    
+                    Spacer()
                 }
-                
-                Spacer()
+                .padding(.horizontal, 20)
             }
-            .padding()
             .navigationBarHidden(true)
             .onAppear {
                 setupPracticeSession()
@@ -463,83 +732,239 @@ struct VocabularyPracticeView: View {
     }
 }
 
-// MARK: - Flashcard View
+// MARK: - Period Button
+struct PeriodButton: View {
+    let days: Int
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Text("\(days)")
+                    .font(.headline.bold())
+                    .foregroundColor(isSelected ? .white : .duoPurple)
+                
+                Text("day\(days == 1 ? "" : "s")")
+                    .font(.caption2.bold())
+                    .foregroundColor(isSelected ? .white : .duoPurple.opacity(0.7))
+            }
+            .frame(width: 50, height: 50)
+            .background(
+                Circle()
+                    .fill(
+                        isSelected ?
+                        LinearGradient(colors: [.duoPurple, .duoBlue], startPoint: .topLeading, endPoint: .bottomTrailing) :
+                        LinearGradient(colors: [.duoPurple.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+            )
+            .scaleEffect(isSelected ? 1.05 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        }
+    }
+}
+
+// MARK: - Progress Card
+struct ProgressCard: View {
+    let title: String
+    let value: String
+    let color: Color
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(title)
+                .font(.caption.bold())
+                .foregroundColor(.secondaryText)
+                .textCase(.uppercase)
+            
+            Text(value)
+                .font(.title2.bold())
+                .foregroundColor(color)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(color.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(color.opacity(0.3), lineWidth: 1)
+                )
+        )
+    }
+}
+
+// MARK: - Navigation Button
+struct NavigationButton: View {
+    let title: String
+    let icon: String
+    let isDisabled: Bool
+    let color: Color
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if icon == "chevron.left" {
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .bold))
+                }
+                
+                Text(title)
+                    .font(.headline)
+                    .fontWeight(.bold)
+                
+                if icon == "chevron.right" {
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .bold))
+                }
+            }
+            .foregroundColor(isDisabled ? .secondaryText : .white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isDisabled ? Color.gray.opacity(0.3) : color)
+            )
+        }
+        .disabled(isDisabled)
+    }
+}
+
+// MARK: - Enhanced Flashcard View
 struct FlashcardView: View {
     let word: Word
     @Binding var showingAnswer: Bool
     let onCorrect: () -> Void
     let onIncorrect: () -> Void
+    @State private var cardFlipped = false
     
     var body: some View {
-        VStack(spacing: 20) {
-            // Card content
-            VStack(spacing: 15) {
-                Text(showingAnswer ? "English" : "German")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .textCase(.uppercase)
+        VStack(spacing: 16) {
+            // Main flashcard
+            ZStack {
+                // Background card that rotates
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.surfaceBackground, Color.cardBackground],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: .duoBlue.opacity(0.15), radius: 20, x: 0, y: 10)
+                    .frame(height: 220)
+                    .rotation3DEffect(
+                        .degrees(cardFlipped ? 180 : 0),
+                        axis: (x: 0, y: 1, z: 0)
+                    )
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8), value: cardFlipped)
                 
-                Text(showingAnswer ? word.english : word.german)
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.5)
-                    .lineLimit(nil)
-                    .foregroundColor(Color(UIColor.label))
-                
-                if !showingAnswer {
-                    Button("Show Answer") {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            showingAnswer = true
+                // Text content on top (doesn't rotate)
+                VStack(spacing: 16) {
+                    Spacer()
+                    
+                    // Word display
+                    Text(showingAnswer ? word.english : word.german)
+                        .font(.title.bold())
+                        .foregroundColor(.primaryText)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(3)
+                    
+                    Spacer()
+                    
+                    // Show answer button
+                    if !showingAnswer {
+                        Button {
+                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                                showingAnswer = true
+                                cardFlipped = true
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "eye")
+                                    .font(.system(size: 14, weight: .semibold))
+                                
+                                Text("Show Answer")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [.duoBlue, .duoPurple],
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                            )
                         }
                     }
-                    .font(.headline)
-                    .foregroundColor(.blue)
-                    .padding()
                 }
+                .padding(24)
             }
-            .frame(maxWidth: .infinity, minHeight: 200)
-            .padding()
-            .background(Color(UIColor.systemBackground))
-            .cornerRadius(15)
-            .shadow(color: Color(UIColor.systemGray4), radius: 5, x: 0, y: 2)
             
-            // Answer buttons
+            // Answer buttons - more compact
             if showingAnswer {
-                HStack(spacing: 20) {
+                HStack(spacing: 12) {
                     Button(action: {
                         onIncorrect()
-                        showingAnswer = false
-                    }) {
-                        HStack {
-                            Image(systemName: "xmark.circle")
-                            Text("Incorrect")
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            showingAnswer = false
+                            cardFlipped = false
                         }
-                        .font(.headline)
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 16, weight: .bold))
+                            
+                            Text("Incorrect")
+                                .font(.subheadline)
+                                .fontWeight(.bold)
+                        }
                         .foregroundColor(.white)
-                        .padding()
-                        .background(Color.red)
-                        .cornerRadius(10)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.duoRed)
+                        )
                     }
                     
                     Button(action: {
                         onCorrect()
-                        showingAnswer = false
-                    }) {
-                        HStack {
-                            Image(systemName: "checkmark.circle")
-                            Text("Correct")
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            showingAnswer = false
+                            cardFlipped = false
                         }
-                        .font(.headline)
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 16, weight: .bold))
+                            
+                            Text("Correct")
+                                .font(.subheadline)
+                                .fontWeight(.bold)
+                        }
                         .foregroundColor(.white)
-                        .padding()
-                        .background(Color.green)
-                        .cornerRadius(10)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.duoGreen)
+                        )
                     }
                 }
+                .transition(.scale.combined(with: .opacity))
+                .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: showingAnswer)
             }
         }
-        .padding()
+        .padding(.horizontal, 4)
     }
 }
 
@@ -547,28 +972,40 @@ struct FlashcardView: View {
 struct GrammarPracticeView: View {
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
-                Image(systemName: "text.book.closed")
-                    .font(.system(size: 80))
-                    .foregroundColor(.blue)
+            ZStack {
+                LinearGradient(
+                    colors: [Color.duoOrange.opacity(0.1), Color.duoYellow.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
-                Text("Grammar Practice")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                Text("Coming Soon!")
-                    .font(.title2)
-                    .foregroundColor(.secondary)
-                
-                Text("We're working on exciting grammar exercises to help you master German grammar rules.")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                
-                Spacer()
+                VStack(spacing: 32) {
+                    Spacer()
+                    
+                    Image(systemName: "text.book.closed")
+                        .font(.system(size: 80))
+                        .foregroundColor(.duoOrange)
+                    
+                    VStack(spacing: 16) {
+                        Text("Grammar Practice")
+                            .font(.largeTitle.bold())
+                            .foregroundColor(.primaryText)
+                        
+                        Text("Coming Soon!")
+                            .font(.title2.bold())
+                            .foregroundColor(.duoOrange)
+                        
+                        Text("We're working on exciting grammar exercises to help you master German grammar rules.")
+                            .font(.body)
+                            .foregroundColor(.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
+                    
+                    Spacer()
+                }
             }
-            .padding()
             .navigationBarHidden(true)
         }
     }
@@ -577,28 +1014,40 @@ struct GrammarPracticeView: View {
 struct ListeningPracticeView: View {
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
-                Image(systemName: "headphones")
-                    .font(.system(size: 80))
-                    .foregroundColor(.purple)
+            ZStack {
+                LinearGradient(
+                    colors: [Color.duoPurple.opacity(0.1), Color.duoRed.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .ignoresSafeArea()
                 
-                Text("Listening Practice")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                
-                Text("Coming Soon!")
-                    .font(.title2)
-                    .foregroundColor(.secondary)
-                
-                Text("Get ready for immersive listening exercises with native German speakers.")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                
-                Spacer()
+                VStack(spacing: 32) {
+                    Spacer()
+                    
+                    Image(systemName: "headphones")
+                        .font(.system(size: 80))
+                        .foregroundColor(.duoPurple)
+                    
+                    VStack(spacing: 16) {
+                        Text("Listening Practice")
+                            .font(.largeTitle.bold())
+                            .foregroundColor(.primaryText)
+                        
+                        Text("Coming Soon!")
+                            .font(.title2.bold())
+                            .foregroundColor(.duoPurple)
+                        
+                        Text("Get ready for immersive listening exercises with native German speakers.")
+                            .font(.body)
+                            .foregroundColor(.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                    }
+                    
+                    Spacer()
+                }
             }
-            .padding()
             .navigationBarHidden(true)
         }
     }
@@ -612,7 +1061,7 @@ struct ContentView: View {
         TabView {
             WordInputView(wordManager: wordManager)
                 .tabItem {
-                    Image(systemName: "plus.circle")
+                    Image(systemName: "plus.circle.fill")
                     Text("Add Words")
                 }
             
@@ -624,7 +1073,7 @@ struct ContentView: View {
             
             GrammarPracticeView()
                 .tabItem {
-                    Image(systemName: "text.book.closed")
+                    Image(systemName: "text.book.closed.fill")
                     Text("Grammar")
                 }
             
@@ -634,6 +1083,6 @@ struct ContentView: View {
                     Text("Listening")
                 }
         }
-        .accentColor(.blue)
+        .accentColor(.duoBlue)
     }
 }
