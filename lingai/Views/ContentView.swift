@@ -72,31 +72,6 @@ class WordManager: ObservableObject {
     }
 }
 
-// MARK: - Translation Service (Mock Implementation)
-func translate(_ text: String, from sourceLanguage: String = "de", to targetLanguage: String = "en") -> String {
-    // This is your perfect translation function
-    // For demo purposes, I'll add some basic translations
-    let translations: [String: String] = [
-        "blumen": "flowers",
-        "haus": "house",
-        "katze": "cat",
-        "hund": "dog",
-        "wasser": "water",
-        "brot": "bread",
-        "auto": "car",
-        "schule": "school"
-    ]
-    
-    if sourceLanguage == "de" && targetLanguage == "en" {
-        return translations[text.lowercased()] ?? "Translation for '\(text)'"
-    } else if sourceLanguage == "en" && targetLanguage == "de" {
-        let reverseDict = Dictionary(uniqueKeysWithValues: translations.map { ($1, $0) })
-        return reverseDict[text.lowercased()] ?? "Übersetzung für '\(text)'"
-    }
-    
-    return text
-}
-
 // MARK: - Word Detail View
 struct WordDetailView: View {
     let word: Word
@@ -166,6 +141,46 @@ struct WordDetailView: View {
     }
 }
 
+
+
+struct EnDeToggle: View {
+    @Binding var isGermanInput: Bool
+    
+    var body: some View {
+        // Background track
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: 55, height: 30)
+            
+            // Knob with text inside
+            HStack {
+                if isGermanInput {
+                    Spacer()
+                }
+                
+                Text(isGermanInput ? "DE" : "EN")
+                    .font(.caption2.bold())
+                    .foregroundColor(.white)
+                    .frame(width: 30, height: 30)
+                    .background(Color.accentColor)
+                    .clipShape(Circle())
+                    .shadow(radius: 1)
+                
+                if !isGermanInput {
+                    Spacer()
+                }
+            }
+            .padding(2)
+            .frame(width: 70, height: 30)
+            .animation(.easeInOut(duration: 0.2), value: isGermanInput)
+        }
+        .onTapGesture {
+            isGermanInput.toggle()
+        }
+    }
+}
+
 // MARK: - Word Input View
 struct WordInputView: View {
     @ObservedObject var wordManager: WordManager
@@ -177,40 +192,24 @@ struct WordInputView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
+                
                 Text("Add a memory")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .padding(.top)
                 
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("\(isGermanInput ? "German" : "English") input")
-                            .font(.headline)
+                HStack {
+                        TextField("Enter \(isGermanInput ? "German" : "English")...", text: $inputText)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .autocorrectionDisabled(true)
                         
                         Spacer()
                         
-                        HStack(spacing: 8) {
-                            Text("EN")
-                                .font(.caption)
-                                .foregroundColor(isGermanInput ? .secondary : .primary)
-                            
-                            Toggle("", isOn: $isGermanInput)
-                                .labelsHidden()
-                                .scaleEffect(0.8)
-                                .onChange(of: isGermanInput) { _ in
-                                    inputText = ""
-                                }
-                            
-                            Text("DE")
-                                .font(.caption)
-                                .foregroundColor(isGermanInput ? .primary : .secondary)
-                        }
-                    }
-                    
-                    TextField("Enter \(isGermanInput ? "German" : "English")...", text: $inputText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .autocorrectionDisabled(true)
+                        EnDeToggle(isGermanInput: $isGermanInput)
+                        .scaleEffect(0.8)
                 }
+                    
+                    
                 
                 Button(action: saveWord) {
                     HStack {
@@ -302,28 +301,13 @@ struct WordInputView: View {
         let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else { return }
         
-        // Translate the word when saving
-        let translatedText: String
-        if isGermanInput {
-            translatedText = translate(trimmedInput, from: "de", to: "en")
-            //
-        } else {
-            translatedText = translate(trimmedInput, from: "en", to: "de")
-        }
-        
-        let newWord: Word
-        if isGermanInput {
-            newWord = Word(german: trimmedInput, english: translatedText)
-        } else {
-            newWord = Word(german: translatedText, english: trimmedInput)
-        }
-        
         Task {
             do {
                 let a = try await translate_llm(phrase: trimmedInput, isGerman: isGermanInput)
                 wordManager.addWord(Word(german: trimmedInput, english: a.trans, etymology: a.etym))
             } catch {
                 print("Error calling mistralChat: \(error)")
+                wordManager.addWord(Word(german: trimmedInput, english: ""))
             }
         }
         
