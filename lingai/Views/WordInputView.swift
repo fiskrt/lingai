@@ -50,7 +50,7 @@ struct WordInputView: View {
                             .padding(.top, 20)
                             
                             List {
-                                ForEach(Array(wordManager.words.suffix(10).reversed())) { word in
+                                ForEach(Array(wordManager.words.suffix(10))) { word in
                                     WordRowView(word: word) {
                                         selectedWord = word
                                         showingWordDetail = true
@@ -229,7 +229,7 @@ struct WordInputView: View {
     }
     
     private func deleteRecentWords(at offsets: IndexSet) {
-        let recentWords = Array(wordManager.words.suffix(10).reversed())
+        let recentWords = Array(wordManager.words.suffix(10))
         let wordsToDelete = offsets.map { recentWords[$0] }
         
         for wordToDelete in wordsToDelete {
