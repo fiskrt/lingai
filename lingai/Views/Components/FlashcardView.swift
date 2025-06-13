@@ -60,60 +60,63 @@ struct FlashcardView: View {
                     .opacity(0.7)
             }
             
-            // Answer buttons - more compact
-            if showingAnswer {
-                HStack(spacing: 12) {
-                    Button(action: {
-                        onIncorrect()
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            showingAnswer = false
-                            cardFlipped = false
+            // Answer buttons area - fixed height to prevent card shifting
+            VStack {
+                if showingAnswer {
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            onIncorrect()
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                showingAnswer = false
+                                cardFlipped = false
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                
+                                Text("Incorrect")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.duoRed)
+                            )
                         }
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 16, weight: .bold))
-                            
-                            Text("Incorrect")
-                                .font(.subheadline)
-                                .fontWeight(.bold)
+                        
+                        Button(action: {
+                            onCorrect()
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                showingAnswer = false
+                                cardFlipped = false
+                            }
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                
+                                Text("Correct")
+                                    .font(.subheadline)
+                                    .fontWeight(.bold)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color.duoGreen)
+                            )
                         }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.duoRed)
-                        )
                     }
-                    
-                    Button(action: {
-                        onCorrect()
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            showingAnswer = false
-                            cardFlipped = false
-                        }
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 16, weight: .bold))
-                            
-                            Text("Correct")
-                                .font(.subheadline)
-                                .fontWeight(.bold)
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.duoGreen)
-                        )
-                    }
+                    .transition(.scale.combined(with: .opacity))
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: showingAnswer)
                 }
-                .transition(.scale.combined(with: .opacity))
-                .animation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.2), value: showingAnswer)
             }
+            .frame(height: 60) // Fixed height for button area
         }
         .padding(.horizontal, 4)
     }
