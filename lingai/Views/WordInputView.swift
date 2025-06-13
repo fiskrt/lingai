@@ -155,6 +155,15 @@ struct WordInputView: View {
                             .fill(Color.cardBackground)
                             .shadow(color: .duoBlue.opacity(0.1), radius: 10, x: 0, y: 5)
                     )
+                    .gesture(
+                        DragGesture()
+                            .onEnded { value in
+                                if value.translation.height > 50 {
+                                    // Dismiss keyboard on downward swipe
+                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                                }
+                            }
+                    )
                 }
             }
             .navigationBarHidden(true)
@@ -163,18 +172,18 @@ struct WordInputView: View {
                     if showingWordDetail, let selectedWord = selectedWord {
                         Color.black.opacity(0.4)
                             .ignoresSafeArea()
+                            .contentShape(Rectangle())
                             .onTapGesture {
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    showingWordDetail = false
-                                }
+                                showingWordDetail = false
                             }
-                            .allowsHitTesting(showingWordDetail)
                         
                         WordDetailView(word: selectedWord, isPresented: $showingWordDetail)
-                            .transition(.scale.combined(with: .opacity))
-                            .animation(.easeOut(duration: 0.2), value: showingWordDetail)
+                            .transition(.scale(scale: 0.8).combined(with: .opacity))
                     }
                 }
+                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: showingWordDetail)
+                .allowsHitTesting(showingWordDetail)
+                .zIndex(showingWordDetail ? 1 : 0)
             )
         }
     }
