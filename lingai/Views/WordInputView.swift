@@ -211,7 +211,8 @@ struct WordInputView: View {
                 let newWord = Word(
                     german: isGermanInput ? trimmedInput : result.trans,
                     english: isGermanInput ? result.trans : trimmedInput,
-                    etymology: result.etym
+                    etymology: result.etym,
+                    synonyms: result.synonyms
                 )
                 wordManager.addWord(newWord)
             } catch {
