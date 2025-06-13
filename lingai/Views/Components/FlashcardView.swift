@@ -9,18 +9,20 @@ struct FlashcardView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            // Main flashcard - now tappable
+            // Main flashcard - now tappable with fixed height
             ZStack {
-                // Background card that rotates
+                // Background card that rotates with different colors
                 RoundedRectangle(cornerRadius: 24)
                     .fill(
                         LinearGradient(
-                            colors: [Color.surfaceBackground, Color.cardBackground],
+                            colors: showingAnswer ? 
+                                [Color.duoGreen.opacity(0.4), Color.duoGreen.opacity(0.2)] :
+                                [Color.duoBlue.opacity(0.1), Color.duoPurple.opacity(0.05)],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                    .shadow(color: .duoBlue.opacity(0.15), radius: 20, x: 0, y: 10)
+                    .shadow(color: showingAnswer ? .duoGreen.opacity(0.3) : .duoBlue.opacity(0.15), radius: 20, x: 0, y: 10)
                     .frame(height: 220)
                     .rotation3DEffect(
                         .degrees(cardFlipped ? 180 : 0),
@@ -28,11 +30,10 @@ struct FlashcardView: View {
                     )
                     .animation(.spring(response: 0.6, dampingFraction: 0.8), value: cardFlipped)
                 
-                // Text content on top (doesn't rotate)
-                VStack(spacing: 16) {
+                // Text content with fixed positioning - word only
+                VStack {
                     Spacer()
                     
-                    // Word display
                     Text(showingAnswer ? word.english : word.german)
                         .font(.title.bold())
                         .foregroundColor(.primaryText)
@@ -41,14 +42,6 @@ struct FlashcardView: View {
                         .lineLimit(3)
                     
                     Spacer()
-                    
-                    // Tap hint for first card
-                    if !showingAnswer {
-                        Text("Tap to reveal")
-                            .font(.caption)
-                            .foregroundColor(.secondaryText)
-                            .opacity(0.7)
-                    }
                 }
                 .padding(24)
             }
@@ -57,6 +50,14 @@ struct FlashcardView: View {
                     showingAnswer.toggle()
                     cardFlipped.toggle()
                 }
+            }
+            
+            // Tap hint outside the card
+            if !showingAnswer {
+                Text("Tap to reveal")
+                    .font(.caption)
+                    .foregroundColor(.secondaryText)
+                    .opacity(0.7)
             }
             
             // Answer buttons - more compact
