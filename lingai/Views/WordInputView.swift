@@ -7,7 +7,6 @@ struct WordInputView: View {
     @State private var selectedWord: Word?
     @State private var showingWordDetail = false
     @State private var showSuccessAnimation = false
-    @FocusState private var isInputFocused: Bool
     
     var body: some View {
         NavigationView {
@@ -104,7 +103,6 @@ struct WordInputView: View {
                                 TextField("Enter \(isGermanInput ? "German" : "English") word...", text: $inputText)
                                     .font(.body.weight(.medium))
                                     .autocorrectionDisabled(true)
-                                    .focused($isInputFocused)
                                     .onSubmit {
                                         if !inputText.isEmpty {
                                             saveWord()
@@ -160,9 +158,6 @@ struct WordInputView: View {
                 }
             }
             .navigationBarHidden(true)
-            .onTapGesture {
-                isInputFocused = false
-            }
             .overlay(
                 Group {
                     if showingWordDetail, let selectedWord = selectedWord {
@@ -184,9 +179,6 @@ struct WordInputView: View {
     private func saveWord() {
         let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else { return }
-        
-        // Dismiss keyboard
-        isInputFocused = false
         
         // Show success animation
         withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
