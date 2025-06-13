@@ -82,6 +82,7 @@ func mistralChat(prompt: String) async throws -> String {
 struct LLMTranslation: Codable {
     let trans: String
     let etym: String
+    let synonyms: String
 }
 
 func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslation {
@@ -89,11 +90,11 @@ func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslatio
     
     if isGerman{
         prompt = """
-        Respond only with a JSON folloing format: {"trans":"translation from German to English of '\(phrase)' here", "etym":"etymology of the german phrase here given in English"}.
+        Respond only with a JSON following format: {"trans":"translation from German to English of '\(phrase)' here", "etym":"etymology of the german phrase here given in English", "synonyms":"2-3 German synonyms for '\(phrase)' separated by commas"}.
         """
     } else {
         prompt = """
-        Respond only with a JSON folloing format: {"trans":"translation from English to German of '\(phrase)' here", "etym":"etymology of the german phrase here given in English"}.
+        Respond only with a JSON following format: {"trans":"translation from English to German of '\(phrase)' here", "etym":"etymology of the german phrase here given in English", "synonyms":"2-3 German synonyms for the translated word separated by commas"}.
         """
     }
 

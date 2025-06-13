@@ -21,7 +21,7 @@ struct WordDetailView: View {
                 Spacer()
                 
                 Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    withAnimation(.spring(response: 0.1, dampingFraction: 0.9)) {
                         isPresented = false
                     }
                 } label: {

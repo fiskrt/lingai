@@ -19,24 +19,79 @@ struct WordInputView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 16) {
-                    // Header
-                    VStack(spacing: 8) {
-                        Image(systemName: "brain.head.profile")
-                            .font(.system(size: 40))
-                            .foregroundColor(.duoBlue)
-                        
-                        Text("Add a Memory")
-                            .font(.largeTitle.bold())
-                            .foregroundColor(.primaryText)
-                        
-                        Text("Expand your vocabulary")
-                            .font(.subheadline)
-                            .foregroundColor(.secondaryText)
+                VStack(spacing: 0) {
+                    // Recent Words Section (now at top)
+                    if !wordManager.words.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Recent Words")
+                                        .font(.title2.bold())
+                                        .foregroundColor(.primaryText)
+                                    
+                                    Text("Tap to view details • Swipe to delete")
+                                        .font(.caption)
+                                        .foregroundColor(.secondaryText)
+                                }
+                                
+                                Spacer()
+                                
+                                Text("\(wordManager.words.count)")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.duoOrange)
+                                    )
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                            
+                            List {
+                                ForEach(Array(wordManager.words.suffix(10).reversed())) { word in
+                                    WordRowView(word: word) {
+                                        selectedWord = word
+                                        showingWordDetail = true
+                                    }
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                }
+                                .onDelete { indexSet in
+                                    deleteRecentWords(at: indexSet)
+                                }
+                            }
+                            .listStyle(PlainListStyle())
+                            .padding(.horizontal, 20)
+                        }
+                    } else {
+                        // Empty state
+                        VStack(spacing: 16) {
+                            Spacer()
+                            
+                            Image(systemName: "book.closed")
+                                .font(.system(size: 60))
+                                .foregroundColor(.duoBlue.opacity(0.6))
+                            
+                            Text("No words yet!")
+                                .font(.title2.bold())
+                                .foregroundColor(.primaryText)
+                            
+                            Text("Add your first word below to get started")
+                                .font(.body)
+                                .foregroundColor(.secondaryText)
+                                .multilineTextAlignment(.center)
+                            
+                            Spacer()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    .padding(.top, 20)
                     
-                    // Input Card
+                    Spacer()
+                    
+                    // Input Card (now at bottom)
                     VStack(spacing: 20) {
                         HStack(spacing: 16) {
                             // Input field
@@ -48,6 +103,11 @@ struct WordInputView: View {
                                 TextField("Enter \(isGermanInput ? "German" : "English") word...", text: $inputText)
                                     .font(.body.weight(.medium))
                                     .autocorrectionDisabled(true)
+                                    .onSubmit {
+                                        if !inputText.isEmpty {
+                                            saveWord()
+                                        }
+                                    }
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
@@ -95,71 +155,16 @@ struct WordInputView: View {
                             .fill(Color.cardBackground)
                             .shadow(color: .duoBlue.opacity(0.1), radius: 10, x: 0, y: 5)
                     )
-                    
-                    // Recent Words Section
-                    if !wordManager.words.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Recent Words")
-                                        .font(.title2.bold())
-                                        .foregroundColor(.primaryText)
-                                    
-                                    Text("Tap to view details • Swipe to delete")
-                                        .font(.caption)
-                                        .foregroundColor(.secondaryText)
-                                }
-                                
-                                Spacer()
-                                
-                                Text("\(wordManager.words.count)")
-                                    .font(.caption.bold())
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.duoOrange)
-                                    )
-                            }
-                            
-                            List {
-                                ForEach(Array(wordManager.words.suffix(10).reversed())) { word in
-                                    WordRowView(word: word) {
-                                        selectedWord = word
-                                        showingWordDetail = true
-                                    }
-                                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
-                                }
-                                .onDelete { indexSet in
-                                    deleteRecentWords(at: indexSet)
+                    .gesture(
+                        DragGesture()
+                            .onEnded { value in
+                                if value.translation.height > 50 {
+                                    // Dismiss keyboard on downward swipe
+                                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                                 }
                             }
-                            .listStyle(PlainListStyle())
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                    } else {
-                        // Empty state
-                        VStack(spacing: 16) {
-                            Image(systemName: "book.closed")
-                                .font(.system(size: 60))
-                                .foregroundColor(.duoBlue.opacity(0.6))
-                            
-                            Text("No words yet!")
-                                .font(.title2.bold())
-                                .foregroundColor(.primaryText)
-                            
-                            Text("Add your first word above to get started")
-                                .font(.body)
-                                .foregroundColor(.secondaryText)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                    )
                 }
-                .padding(.horizontal, 20)
             }
             .navigationBarHidden(true)
             .overlay(
@@ -167,15 +172,18 @@ struct WordInputView: View {
                     if showingWordDetail, let selectedWord = selectedWord {
                         Color.black.opacity(0.4)
                             .ignoresSafeArea()
+                            .contentShape(Rectangle())
                             .onTapGesture {
                                 showingWordDetail = false
                             }
                         
                         WordDetailView(word: selectedWord, isPresented: $showingWordDetail)
-                            .transition(.scale.combined(with: .opacity))
+                            .transition(.scale(scale: 0.8).combined(with: .opacity))
                     }
                 }
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showingWordDetail)
+                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: showingWordDetail)
+                .allowsHitTesting(showingWordDetail)
+                .zIndex(showingWordDetail ? 1 : 0)
             )
         }
     }
@@ -203,7 +211,8 @@ struct WordInputView: View {
                 let newWord = Word(
                     german: isGermanInput ? trimmedInput : result.trans,
                     english: isGermanInput ? result.trans : trimmedInput,
-                    etymology: result.etym
+                    etymology: result.etym,
+                    synonyms: result.synonyms
                 )
                 wordManager.addWord(newWord)
             } catch {
