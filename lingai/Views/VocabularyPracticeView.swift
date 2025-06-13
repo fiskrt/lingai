@@ -113,12 +113,39 @@ struct VocabularyPracticeView: View {
                                 )
                             }
                             
-                            // Flashcard
+                            // Flashcard with swipe gestures
                             FlashcardView(
                                 word: practiceWords[currentWordIndex],
                                 showingAnswer: $showingAnswer,
                                 onCorrect: handleCorrect,
                                 onIncorrect: handleIncorrect
+                            )
+                            .gesture(
+                                DragGesture()
+                                    .onEnded { value in
+                                        let swipeThreshold: CGFloat = 50
+                                        
+                                        if value.translation.width > swipeThreshold {
+                                            // Swipe right - go to previous card
+                                            if currentWordIndex > 0 {
+                                                withAnimation(.easeInOut(duration: 0.3)) {
+                                                    currentWordIndex -= 1
+                                                    showingAnswer = false
+                                                }
+                                            }
+                                        } else if value.translation.width < -swipeThreshold {
+                                            // Swipe left - go to next card
+                                            if currentWordIndex < practiceWords.count - 1 {
+                                                withAnimation(.easeInOut(duration: 0.3)) {
+                                                    currentWordIndex += 1
+                                                    showingAnswer = false
+                                                }
+                                            } else {
+                                                // At the end, restart session
+                                                setupPracticeSession()
+                                            }
+                                        }
+                                    }
                             )
                             
                             // Navigation buttons
@@ -178,9 +205,35 @@ struct VocabularyPracticeView: View {
         sessionScore += 1
         totalAnswered += 1
         wordManager.markAsLearned(practiceWords[currentWordIndex])
+        
+        // Auto-advance to next card
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if currentWordIndex < practiceWords.count - 1 {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    currentWordIndex += 1
+                    showingAnswer = false
+                }
+            } else {
+                // At the end, restart session
+                setupPracticeSession()
+            }
+        }
     }
     
     private func handleIncorrect() {
         totalAnswered += 1
+        
+        // Auto-advance to next card
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if currentWordIndex < practiceWords.count - 1 {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    currentWordIndex += 1
+                    showingAnswer = false
+                }
+            } else {
+                // At the end, restart session
+                setupPracticeSession()
+            }
+        }
     }
 }
