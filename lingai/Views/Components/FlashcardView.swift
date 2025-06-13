@@ -9,7 +9,7 @@ struct FlashcardView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            // Main flashcard
+            // Main flashcard - now tappable
             ZStack {
                 // Background card that rotates
                 RoundedRectangle(cornerRadius: 24)
@@ -42,39 +42,21 @@ struct FlashcardView: View {
                     
                     Spacer()
                     
-                    // Show answer button
+                    // Tap hint for first card
                     if !showingAnswer {
-                        Button {
-                            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                                showingAnswer = true
-                                cardFlipped = true
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "eye")
-                                    .font(.system(size: 14, weight: .semibold))
-                                
-                                Text("Show Answer")
-                                    .font(.subheadline)
-                                    .fontWeight(.bold)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(
-                                        LinearGradient(
-                                            colors: [.duoBlue, .duoPurple],
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                            )
-                        }
+                        Text("Tap to reveal")
+                            .font(.caption)
+                            .foregroundColor(.secondaryText)
+                            .opacity(0.7)
                     }
                 }
                 .padding(24)
+            }
+            .onTapGesture {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    showingAnswer.toggle()
+                    cardFlipped.toggle()
+                }
             }
             
             // Answer buttons - more compact

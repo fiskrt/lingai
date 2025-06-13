@@ -147,37 +147,6 @@ struct VocabularyPracticeView: View {
                                         }
                                     }
                             )
-                            
-                            // Navigation buttons
-                            HStack(spacing: 16) {
-                                NavigationButton(
-                                    title: "Previous",
-                                    icon: "chevron.left",
-                                    isDisabled: currentWordIndex == 0,
-                                    color: .gray
-                                ) {
-                                    if currentWordIndex > 0 {
-                                        currentWordIndex -= 1
-                                        showingAnswer = false
-                                    }
-                                }
-                                
-                                Spacer()
-                                
-                                NavigationButton(
-                                    title: currentWordIndex < practiceWords.count - 1 ? "Next" : "Restart",
-                                    icon: "chevron.right",
-                                    isDisabled: false,
-                                    color: .duoBlue
-                                ) {
-                                    if currentWordIndex < practiceWords.count - 1 {
-                                        currentWordIndex += 1
-                                        showingAnswer = false
-                                    } else {
-                                        setupPracticeSession()
-                                    }
-                                }
-                            }
                         }
                     }
                     
