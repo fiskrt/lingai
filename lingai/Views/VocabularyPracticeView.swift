@@ -8,6 +8,7 @@ struct VocabularyPracticeView: View {
     @State private var practiceWords: [Word] = []
     @State private var sessionScore = 0
     @State private var totalAnswered = 0
+    @State private var showPeriodSelector = true
     
     let periodOptions = [1, 3, 7, 14, 30]
     
@@ -23,41 +24,69 @@ struct VocabularyPracticeView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 4) {
-                        Image(systemName: "brain.head.profile")
-                            .font(.system(size: 32))
-                            .foregroundColor(.duoPurple)
-                        
-                        Text("Practice Time!")
-                            .font(.title.bold())
-                            .foregroundColor(.primaryText)
-                        
-                        Text("Test your knowledge")
-                            .font(.caption)
-                            .foregroundColor(.secondaryText)
+                    // Header - only show when no practice words or when selector is shown
+                    if practiceWords.isEmpty || showPeriodSelector {
+                        VStack(spacing: 4) {
+                            Image(systemName: "brain.head.profile")
+                                .font(.system(size: 32))
+                                .foregroundColor(.duoPurple)
+                            
+                            Text("Practice Time!")
+                                .font(.title.bold())
+                                .foregroundColor(.primaryText)
+                            
+                            Text("Test your knowledge")
+                                .font(.caption)
+                                .foregroundColor(.secondaryText)
+                        }
+                        .padding(.top, 12)
                     }
-                    .padding(.top, 12)
                     
-                    // Period selector
+                    // Period selector - collapsible
                     VStack(spacing: 12) {
-                        Text("Practice words from the last:")
-                            .font(.subheadline)
-                            .foregroundColor(.primaryText)
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showPeriodSelector.toggle()
+                            }
+                        }) {
+                            HStack {
+                                Text(practiceWords.isEmpty ? "Practice words from the last:" : "Period: \(selectedPeriod) day\(selectedPeriod == 1 ? "" : "s")")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primaryText)
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.down")
+                                    .font(.caption)
+                                    .foregroundColor(.secondaryText)
+                                    .rotationEffect(.degrees(showPeriodSelector ? 0 : -90))
+                                    .animation(.easeInOut(duration: 0.2), value: showPeriodSelector)
+                            }
+                        }
                         
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(periodOptions, id: \.self) { days in
-                                    PeriodButton(
-                                        days: days,
-                                        isSelected: selectedPeriod == days
-                                    ) {
-                                        selectedPeriod = days
-                                        setupPracticeSession()
+                        if showPeriodSelector {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(periodOptions, id: \.self) { days in
+                                        PeriodButton(
+                                            days: days,
+                                            isSelected: selectedPeriod == days
+                                        ) {
+                                            selectedPeriod = days
+                                            setupPracticeSession()
+                                            
+                                            // Auto-collapse after selection if we have words
+                                            if !practiceWords.isEmpty {
+                                                withAnimation(.easeInOut(duration: 0.3).delay(0.2)) {
+                                                    showPeriodSelector = false
+                                                }
+                                            }
+                                        }
                                     }
                                 }
+                                .padding(.horizontal, 20)
                             }
-                            .padding(.horizontal, 20)
+                            .transition(.opacity.combined(with: .scale))
                         }
                     }
                     .padding(16)
@@ -113,44 +142,40 @@ struct VocabularyPracticeView: View {
                                 )
                             }
                             
-                            // Flashcard
+                            // Flashcard with swipe gestures
                             FlashcardView(
                                 word: practiceWords[currentWordIndex],
                                 showingAnswer: $showingAnswer,
                                 onCorrect: handleCorrect,
                                 onIncorrect: handleIncorrect
                             )
-                            
-                            // Navigation buttons
-                            HStack(spacing: 16) {
-                                NavigationButton(
-                                    title: "Previous",
-                                    icon: "chevron.left",
-                                    isDisabled: currentWordIndex == 0,
-                                    color: .gray
-                                ) {
-                                    if currentWordIndex > 0 {
-                                        currentWordIndex -= 1
-                                        showingAnswer = false
+                            .gesture(
+                                DragGesture()
+                                    .onEnded { value in
+                                        let swipeThreshold: CGFloat = 50
+                                        
+                                        if value.translation.width > swipeThreshold {
+                                            // Swipe right - go to previous card
+                                            if currentWordIndex > 0 {
+                                                withAnimation(.easeInOut(duration: 0.3)) {
+                                                    currentWordIndex -= 1
+                                                    showingAnswer = false
+                                                }
+                                            }
+                                        } else if value.translation.width < -swipeThreshold {
+                                            // Swipe left - go to next card
+                                            if currentWordIndex < practiceWords.count - 1 {
+                                                withAnimation(.easeInOut(duration: 0.3)) {
+                                                    currentWordIndex += 1
+                                                    showingAnswer = false
+                                                }
+                                            } else {
+                                                // At the end, restart session
+                                                setupPracticeSession()
+                                            }
+                                        }
                                     }
-                                }
-                                
-                                Spacer()
-                                
-                                NavigationButton(
-                                    title: currentWordIndex < practiceWords.count - 1 ? "Next" : "Restart",
-                                    icon: "chevron.right",
-                                    isDisabled: false,
-                                    color: .duoBlue
-                                ) {
-                                    if currentWordIndex < practiceWords.count - 1 {
-                                        currentWordIndex += 1
-                                        showingAnswer = false
-                                    } else {
-                                        setupPracticeSession()
-                                    }
-                                }
-                            }
+                            )
                         }
                     }
                     
@@ -172,15 +197,48 @@ struct VocabularyPracticeView: View {
         showingAnswer = false
         sessionScore = 0
         totalAnswered = 0
+        
+        // Auto-collapse selector when practice starts with words
+        if !practiceWords.isEmpty {
+            withAnimation(.easeInOut(duration: 0.3).delay(0.1)) {
+                showPeriodSelector = false
+            }
+        }
     }
     
     private func handleCorrect() {
         sessionScore += 1
         totalAnswered += 1
         wordManager.markAsLearned(practiceWords[currentWordIndex])
+        
+        // Auto-advance to next card
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if currentWordIndex < practiceWords.count - 1 {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    currentWordIndex += 1
+                    showingAnswer = false
+                }
+            } else {
+                // At the end, restart session
+                setupPracticeSession()
+            }
+        }
     }
     
     private func handleIncorrect() {
         totalAnswered += 1
+        
+        // Auto-advance to next card
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            if currentWordIndex < practiceWords.count - 1 {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    currentWordIndex += 1
+                    showingAnswer = false
+                }
+            } else {
+                // At the end, restart session
+                setupPracticeSession()
+            }
+        }
     }
 }

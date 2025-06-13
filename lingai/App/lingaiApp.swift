@@ -9,10 +9,19 @@ import SwiftUI
 
 @main
 struct LanguageLearningApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
+    }
+}
+
+// App delegate to control orientation
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        return .portrait // Only allow portrait orientation
     }
 }
 
