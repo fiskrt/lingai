@@ -192,6 +192,9 @@ struct WordInputView: View {
         let trimmedInput = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedInput.isEmpty else { return }
         
+        // Dismiss keyboard immediately
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        
         // Show success animation
         withAnimation(.spring(response: 0.4, dampingFraction: 0.6)) {
             showSuccessAnimation = true
@@ -219,8 +222,8 @@ struct WordInputView: View {
                 print("Error calling translate_llm: \(error)")
                 // Fallback on error
                 let newWord = Word(
-                    german: isGermanInput ? trimmedInput : "",
-                    english: isGermanInput ? "" : trimmedInput
+                    german: isGermanInput ? trimmedInput : "failed to trans",
+                    english: isGermanInput ? "failed to trans" : trimmedInput
                 )
                 wordManager.addWord(newWord)
             }
