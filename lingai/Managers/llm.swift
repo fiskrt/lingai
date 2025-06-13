@@ -85,6 +85,18 @@ struct LLMTranslation: Codable {
     let synonyms: String
 }
 
+struct LLMReadingPassage: Codable {
+    let title: String
+    let content: String
+    let questions: [LLMQuestion]
+    
+    struct LLMQuestion: Codable {
+        let question: String
+        let options: [String]
+        let correct_answer: Int
+    }
+}
+
 func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslation {
     let prompt: String
     
@@ -110,4 +122,42 @@ func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslatio
 
     let translation = try JSONDecoder().decode(LLMTranslation.self, from: jsonData)
     return translation
+}
+
+func generateReadingPassage(vocabularyWords: [String]) async throws -> LLMReadingPassage {
+    let wordsString = vocabularyWords.joined(separator: ", ")
+    
+    let prompt = """
+    Create a German reading comprehension exercise. Write a ~300 word German text that naturally incorporates these vocabulary words: \(wordsString).
+    
+    Then create 4-5 multiple choice questions in German about the text comprehension.
+    
+    Respond only with JSON in this exact format:
+    {
+        "title": "Title for the reading passage in German",
+        "content": "The 300-word German text here",
+        "questions": [
+            {
+                "question": "Question in German",
+                "options": ["Option A", "Option B", "Option C", "Option D"],
+                "correct_answer": 0
+            }
+        ]
+    }
+    
+    Make the text engaging and educational. Questions should test comprehension, not just vocabulary recall.
+    """
+    
+    let response = try await mistralChat(prompt: prompt)
+    
+    guard let jsonStart = response.firstIndex(of: "{"),
+          let jsonEnd = response.lastIndex(of: "}") else {
+        throw NSError(domain: "ParseError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not find JSON in response."])
+    }
+    
+    let jsonSubstring = response[jsonStart...jsonEnd]
+    let jsonData = Data(jsonSubstring.utf8)
+    
+    let passage = try JSONDecoder().decode(LLMReadingPassage.self, from: jsonData)
+    return passage
 }
