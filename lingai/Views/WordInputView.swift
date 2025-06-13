@@ -164,14 +164,17 @@ struct WordInputView: View {
                         Color.black.opacity(0.4)
                             .ignoresSafeArea()
                             .onTapGesture {
-                                showingWordDetail = false
+                                withAnimation(.easeOut(duration: 0.2)) {
+                                    showingWordDetail = false
+                                }
                             }
+                            .allowsHitTesting(showingWordDetail)
                         
                         WordDetailView(word: selectedWord, isPresented: $showingWordDetail)
                             .transition(.scale.combined(with: .opacity))
+                            .animation(.easeOut(duration: 0.2), value: showingWordDetail)
                     }
                 }
-                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: showingWordDetail)
             )
         }
     }
