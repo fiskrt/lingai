@@ -1,0 +1,276 @@
+import SwiftUI
+
+struct ReadingPassageView: View {
+    let passage: ReadingPassage
+    @ObservedObject var readingManager: ReadingManager
+    @Environment(\.presentationMode) var presentationMode
+    
+    @State private var selectedAnswers: [Int] = []
+    @State private var showingResults = false
+    @State private var currentQuestionIndex = 0
+    @State private var showingQuestions = false
+    
+    init(passage: ReadingPassage, readingManager: ReadingManager) {
+        self.passage = passage
+        self.readingManager = readingManager
+        self._selectedAnswers = State(initialValue: Array(repeating: -1, count: passage.questions.count))
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                if !showingQuestions {
+                    readingContentView
+                } else if !showingResults {
+                    questionsView
+                } else {
+                    resultsView
+                }
+            }
+            .navigationTitle(passage.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(leading: closeButton)
+        }
+    }
+    
+    private var closeButton: some View {
+        Button("Close") {
+            presentationMode.wrappedValue.dismiss()
+        }
+    }
+    
+    private var readingContentView: some View {
+        VStack(spacing: 20) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(passage.title)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .padding(.bottom, 8)
+                    
+                    Text(passage.content)
+                        .font(.body)
+                        .lineSpacing(6)
+                        .padding(.horizontal, 4)
+                }
+                .padding()
+            }
+            
+            Spacer()
+            
+            Button(action: {
+                showingQuestions = true
+            }) {
+                Text("Start Questions")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.duoBlue)
+                    .cornerRadius(12)
+            }
+            .padding()
+        }
+    }
+    
+    private var questionsView: some View {
+        VStack(spacing: 20) {
+            ProgressView(value: Double(currentQuestionIndex + 1), total: Double(passage.questions.count))
+                .padding(.horizontal)
+            
+            Text("Question \(currentQuestionIndex + 1) of \(passage.questions.count)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text(passage.questions[currentQuestionIndex].question)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal)
+                    
+                    VStack(spacing: 12) {
+                        ForEach(Array(passage.questions[currentQuestionIndex].options.enumerated()), id: \.offset) { index, option in
+                            OptionButton(
+                                text: option,
+                                isSelected: selectedAnswers[currentQuestionIndex] == index,
+                                action: {
+                                    selectedAnswers[currentQuestionIndex] = index
+                                }
+                            )
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+            
+            Spacer()
+            
+            HStack {
+                if currentQuestionIndex > 0 {
+                    Button("Previous") {
+                        currentQuestionIndex -= 1
+                    }
+                    .buttonStyle(.bordered)
+                }
+                
+                Spacer()
+                
+                Button(currentQuestionIndex == passage.questions.count - 1 ? "Finish" : "Next") {
+                    if currentQuestionIndex == passage.questions.count - 1 {
+                        finishQuiz()
+                    } else {
+                        currentQuestionIndex += 1
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(selectedAnswers[currentQuestionIndex] == -1)
+            }
+            .padding()
+        }
+    }
+    
+    private var resultsView: some View {
+        let score = calculateScore()
+        
+        return VStack(spacing: 24) {
+            Text("Quiz Complete!")
+                .font(.title)
+                .fontWeight(.bold)
+            
+            VStack(spacing: 8) {
+                Text("\(score)%")
+                    .font(.system(size: 60, weight: .bold))
+                    .foregroundColor(score >= 70 ? .green : score >= 50 ? .orange : .red)
+                
+                Text("Score")
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+            }
+            
+            ScrollView {
+                VStack(spacing: 16) {
+                    ForEach(Array(passage.questions.enumerated()), id: \.offset) { index, question in
+                        QuestionResultView(
+                            question: question,
+                            selectedAnswer: selectedAnswers[index],
+                            questionNumber: index + 1
+                        )
+                    }
+                }
+                .padding()
+            }
+            
+            Button("Close") {
+                presentationMode.wrappedValue.dismiss()
+            }
+            .buttonStyle(.borderedProminent)
+            .padding()
+        }
+    }
+    
+    private func finishQuiz() {
+        readingManager.completeSession(for: passage.id, answers: selectedAnswers)
+        showingResults = true
+    }
+    
+    private func calculateScore() -> Int {
+        var correct = 0
+        for (index, answer) in selectedAnswers.enumerated() {
+            if answer == passage.questions[index].correctAnswerIndex {
+                correct += 1
+            }
+        }
+        return Int((Double(correct) / Double(passage.questions.count)) * 100)
+    }
+}
+
+struct OptionButton: View {
+    let text: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(text)
+                    .font(.body)
+                    .multilineTextAlignment(.leading)
+                
+                Spacer()
+                
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? .duoBlue : .gray)
+            }
+            .padding()
+            .background(isSelected ? Color.duoBlue.opacity(0.1) : Color(.systemGray6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color.duoBlue : Color.clear, lineWidth: 2)
+            )
+            .cornerRadius(12)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct QuestionResultView: View {
+    let question: ComprehensionQuestion
+    let selectedAnswer: Int
+    let questionNumber: Int
+    
+    private var isCorrect: Bool {
+        selectedAnswer == question.correctAnswerIndex
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Question \(questionNumber)")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Image(systemName: isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill")
+                    .foregroundColor(isCorrect ? .green : .red)
+            }
+            
+            Text(question.question)
+                .font(.body)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(question.options.enumerated()), id: \.offset) { index, option in
+                    HStack {
+                        Text(option)
+                            .font(.caption)
+                        
+                        Spacer()
+                        
+                        if index == question.correctAnswerIndex {
+                            Text("Correct")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.green)
+                        } else if index == selectedAnswer && !isCorrect {
+                            Text("Your Answer")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 8)
+                    .background(
+                        index == question.correctAnswerIndex ? Color.green.opacity(0.1) :
+                        index == selectedAnswer && !isCorrect ? Color.red.opacity(0.1) :
+                        Color.clear
+                    )
+                    .cornerRadius(6)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
