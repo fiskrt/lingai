@@ -111,3 +111,84 @@ func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslatio
     let translation = try JSONDecoder().decode(LLMTranslation.self, from: jsonData)
     return translation
 }
+
+struct GrammarExerciseResponse: Codable {
+    let exercises: [GeneratedExercise]
+    
+    struct GeneratedExercise: Codable {
+        let type: String
+        let question: String
+        let correct_answer: String
+        let options: [String]?
+        let explanation: String
+        let difficulty: String
+        let used_words: [String]
+    }
+}
+
+func generate_grammar_exercises(words: [String], exerciseType: String, count: Int = 5) async throws -> GrammarExerciseResponse {
+    let wordList = words.joined(separator: ", ")
+    
+    let exerciseInstructions: String
+    switch exerciseType {
+    case "fill_blank":
+        exerciseInstructions = """
+        - Create sentences with blanks for articles (der/die/das), cases (accusative/dative/genitive), or verb forms
+        - Format: "Ich gehe in ___ Park" with correct answer "den" (accusative)
+        - Options should include der, die, das, den, dem, des as appropriate
+        """
+    case "sentence_building":
+        exerciseInstructions = """
+        - Provide scrambled German words that form a correct sentence
+        - Format question as: "Build a sentence: [word1, word2, word3, word4]"
+        - Correct answer should be the properly ordered sentence
+        - No options needed (options can be empty array)
+        """
+    case "case_selection":
+        exerciseInstructions = """
+        - Focus on correct case usage (Nominativ, Akkusativ, Dativ, Genitiv)
+        - Format: "Complete: Ich sehe ___ Mann" with options and correct case
+        - Options should include different case forms of the same article/adjective
+        """
+    case "verb_conjugation":
+        exerciseInstructions = """
+        - Present verb infinitives and ask for correct conjugation
+        - Format: "Conjugate 'sein' for 'wir': wir ___" with correct answer "sind"
+        - Include common verb forms and tenses
+        """
+    default:
+        exerciseInstructions = "Create general grammar exercises"
+    }
+    
+    let prompt = """
+    Create \(count) German grammar exercises using these vocabulary words when possible: \(wordList).
+    Exercise type: \(exerciseType)
+    
+    \(exerciseInstructions)
+    
+    Respond only with JSON in this exact format: {"exercises": [{"type": "\(exerciseType)", "question": "question here", "correct_answer": "answer", "options": ["option1", "option2", "correct_answer", "option3"], "explanation": "brief explanation of the grammar rule", "difficulty": "beginner", "used_words": ["word1", "word2"]}]}
+    
+    Rules:
+    - Each exercise must include a clear question
+    - Correct answer must be precise and unambiguous
+    - Include 3-4 options for multiple choice (except sentence_building which can have empty options)
+    - Explanation should be 1-2 sentences explaining the grammar rule
+    - Difficulty should be "beginner", "intermediate", or "advanced"
+    - used_words should list vocabulary words that appear in the exercise
+    - Make exercises progressively more challenging
+    - Ensure grammatical accuracy
+    """
+    
+    let response = try await mistralChat(prompt: prompt)
+    
+    guard let jsonStart = response.firstIndex(of: "{"),
+          let jsonEnd = response.lastIndex(of: "}") else {
+        throw NSError(domain: "ParseError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not find JSON in response."])
+    }
+
+    let jsonSubstring = response[jsonStart...jsonEnd]
+    let jsonData = Data(jsonSubstring.utf8)
+
+    let grammarResponse = try JSONDecoder().decode(GrammarExerciseResponse.self, from: jsonData)
+    return grammarResponse
+}
