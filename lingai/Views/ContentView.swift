@@ -22,7 +22,7 @@ struct ContentView: View {
                     Text("Practice")
                 }
             
-            GrammarPracticeView()
+            GrammarPracticeView(wordManager: wordManager)
                 .tabItem {
                     Image(systemName: "text.book.closed.fill")
                     Text("Grammar")
