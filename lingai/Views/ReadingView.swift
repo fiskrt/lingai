@@ -5,6 +5,8 @@ struct ReadingView: View {
     @StateObject private var readingManager = ReadingManager()
     @State private var selectedPassage: ReadingPassage?
     @State private var showingPassageDetail = false
+    @State private var showingCustomInstructions = false
+    @State private var customInstructions = ""
     
     var body: some View {
         NavigationView {
@@ -26,6 +28,17 @@ struct ReadingView: View {
             }
             .sheet(item: $selectedPassage) { passage in
                 ReadingPassageView(passage: passage, readingManager: readingManager)
+            }
+            .sheet(isPresented: $showingCustomInstructions) {
+                CustomInstructionsView(
+                    customInstructions: $customInstructions,
+                    isPresented: $showingCustomInstructions,
+                    onGenerate: {
+                        Task {
+                            await readingManager.createReadingPassage(from: wordManager.words, customInstructions: customInstructions)
+                        }
+                    }
+                )
             }
         }
     }
@@ -80,9 +93,7 @@ struct ReadingView: View {
     
     private var generateButton: some View {
         Button(action: {
-            Task {
-                await readingManager.createReadingPassage(from: wordManager.words)
-            }
+            showingCustomInstructions = true
         }) {
             HStack {
                 Image(systemName: "sparkles")
@@ -94,7 +105,7 @@ struct ReadingView: View {
             .foregroundColor(.white)
             .roundedCornerStyle()
         }
-        .disabled(readingManager.isGenerating || wordManager.words.isEmpty)
+        .disabled(wordManager.words.isEmpty)
     }
     
     private var generateLoadingView: some View {

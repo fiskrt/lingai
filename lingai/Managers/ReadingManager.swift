@@ -15,7 +15,7 @@ class ReadingManager: ObservableObject {
         loadSessions()
     }
     
-    func createReadingPassage(from words: [Word]) async {
+    func createReadingPassage(from words: [Word], customInstructions: String = "") async {
         DispatchQueue.main.async {
             self.isGenerating = true
             self.errorMessage = nil
@@ -31,7 +31,7 @@ class ReadingManager: ObservableObject {
         }
         
         do {
-            let llmPassage = try await generateReadingPassage(vocabularyWords: vocabularyWords)
+            let llmPassage = try await generateReadingPassage(vocabularyWords: vocabularyWords, customInstructions: customInstructions)
             
             let questions = llmPassage.questions.map { llmQuestion in
                 ComprehensionQuestion(

@@ -124,11 +124,13 @@ func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslatio
     return translation
 }
 
-func generateReadingPassage(vocabularyWords: [String]) async throws -> LLMReadingPassage {
+func generateReadingPassage(vocabularyWords: [String], customInstructions: String = "") async throws -> LLMReadingPassage {
     let wordsString = vocabularyWords.joined(separator: ", ")
     
+    let customPrompt = customInstructions.isEmpty ? "" : "\n\nAdditional instructions: \(customInstructions)"
+    
     let prompt = """
-    Create a German reading comprehension exercise. Write a ~300 word German text that naturally incorporates these vocabulary words: \(wordsString).
+    Create a German reading comprehension exercise. Write a ~300 word German text that naturally incorporates these vocabulary words: \(wordsString).\(customPrompt)
     
     Then create 4-5 multiple choice questions in German about the text comprehension.
     
