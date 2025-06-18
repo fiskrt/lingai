@@ -3,7 +3,6 @@ import SwiftUI
 struct ReadingView: View {
     @ObservedObject var wordManager: WordManager
     @StateObject private var readingManager = ReadingManager()
-    @State private var selectedPassage: ReadingPassage?
     @State private var showingPassageDetail = false
     @State private var showingCustomInstructions = false
     @State private var customInstructions = ""
@@ -25,9 +24,6 @@ struct ReadingView: View {
                 }
             } message: {
                 Text(readingManager.errorMessage ?? "")
-            }
-            .sheet(item: $selectedPassage) { passage in
-                ReadingPassageView(passage: passage, readingManager: readingManager)
             }
             .sheet(isPresented: $showingCustomInstructions) {
                 CustomInstructionsView(
@@ -82,9 +78,10 @@ struct ReadingView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(readingManager.readingPassages) { passage in
-                        PassageRowView(passage: passage) {
-                            selectedPassage = passage
+                        NavigationLink(destination: ReadingPassageView(passage: passage, readingManager: readingManager)) {
+                            PassageRowContent(passage: passage)
                         }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
             }
@@ -122,13 +119,11 @@ struct ReadingView: View {
     }
 }
 
-struct PassageRowView: View {
+struct PassageRowContent: View {
     let passage: ReadingPassage
-    let onTap: () -> Void
     
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
                 Text(passage.title)
                     .font(.headline)
                     .fontWeight(.semibold)
@@ -142,13 +137,11 @@ struct PassageRowView: View {
                     .font(.body)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding()
-            .background(Color(.systemGray6))
-            .roundedCornerStyle()
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color(.systemGray6))
+        .roundedCornerStyle()
     }
 }
 

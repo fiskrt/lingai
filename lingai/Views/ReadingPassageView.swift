@@ -9,6 +9,7 @@ struct ReadingPassageView: View {
     @State private var showingResults = false
     @State private var currentQuestionIndex = 0
     @State private var showingQuestions = false
+    @State private var showingControls = false
     
     init(passage: ReadingPassage, readingManager: ReadingManager) {
         self.passage = passage
@@ -17,59 +18,69 @@ struct ReadingPassageView: View {
     }
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                if !showingQuestions {
-                    readingContentView
-                } else if !showingResults {
-                    questionsView
-                } else {
-                    resultsView
-                }
+        VStack(spacing: 0) {
+            if !showingQuestions {
+                readingContentView
+            } else if !showingResults {
+                questionsView
+            } else {
+                resultsView
             }
-            .navigationTitle(passage.title)
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarItems(leading: closeButton)
         }
+        .navigationTitle(passage.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(!showingControls)
+        .toolbar(showingControls ? .visible : .hidden, for: .tabBar)
     }
     
-    private var closeButton: some View {
-        Button("Close") {
-            presentationMode.wrappedValue.dismiss()
-        }
-    }
     
     private var readingContentView: some View {
-        VStack(spacing: 20) {
+        ZStack {
+            // Full screen reading content - static positioning
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 20) {
                     Text(passage.title)
-                        .font(.title)
+                        .font(.largeTitle)
                         .fontWeight(.bold)
-                        .padding(.bottom, 8)
+                        .padding(.top, 40)
                     
                     Text(passage.content)
-                        .font(.body)
-                        .lineSpacing(6)
-                        .padding(.horizontal, 4)
+                        .font(.title3)
+                        .lineSpacing(8)
+                        .padding(.bottom, 100)
                 }
-                .padding()
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollDisabled(false)
+            .background(Color(.systemBackground))
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showingControls.toggle()
+                }
             }
             
-            Spacer()
-            
-            Button(action: {
-                showingQuestions = true
-            }) {
-                Text("Start Questions")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.duoBlue)
-                    .cornerRadius(12)
+            // Floating start questions button
+            if showingControls {
+                VStack {
+                    Spacer()
+                    Button(action: {
+                        showingQuestions = true
+                        showingControls = false
+                    }) {
+                        Text("Start Questions")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.duoBlue)
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            .padding()
         }
     }
     
