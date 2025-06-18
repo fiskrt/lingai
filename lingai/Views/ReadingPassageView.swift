@@ -131,7 +131,7 @@ struct ReadingPassageView: View {
                                 .cornerRadius(12)
                         }
                         .padding(.horizontal, 24)
-                        .padding(.bottom, 120),
+                        .padding(.bottom, 90),
                         alignment: .bottom
                     )
                 }
