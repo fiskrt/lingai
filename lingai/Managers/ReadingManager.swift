@@ -96,31 +96,11 @@ class ReadingManager: NSObject, ObservableObject {
     }
     
     func playAudio(for passage: ReadingPassage) {
-        guard let audioFilePath = passage.audioFilePath else {
-            print("No audio file available for this passage")
-            return
-        }
-        
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let audioURL = documentsPath.appendingPathComponent("\(audioFilePath).mp3")
-        
-        guard FileManager.default.fileExists(atPath: audioURL.path) else {
-            print("Audio file does not exist at path: \(audioURL.path)")
-            return
-        }
+        guard let audioURL = getAudioURL(for: passage) else { return }
         
         do {
-            // Configure audio session for playback even in silent mode
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
-            try AVAudioSession.sharedInstance().setActive(true)
-            
-            // If audioPlayer doesn't exist or is for a different file, create new one
-            if audioPlayer == nil || audioPlayer?.url != audioURL {
-                audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
-                audioPlayer?.delegate = self
-                audioPlayer?.prepareToPlay()
-            }
-            
+            try configureAudioSession()
+            try setupAudioPlayer(with: audioURL)
             audioPlayer?.play()
             isPlayingAudio = true
         } catch {
@@ -137,12 +117,76 @@ class ReadingManager: NSObject, ObservableObject {
         audioPlayer?.stop()
         audioPlayer?.currentTime = 0
         isPlayingAudio = false
+        deactivateAudioSession()
+    }
+    
+    func pauseAudioOnExit() {
+        if isPlayingAudio {
+            audioPlayer?.pause()
+            isPlayingAudio = false
+        }
+        // Don't deactivate session or nil out player - keep state for resume
+    }
+    
+    func restartAudio(for passage: ReadingPassage) {
+        guard let audioURL = getAudioURL(for: passage) else { return }
         
-        // Deactivate audio session when stopping
+        do {
+            try configureAudioSession()
+            try setupAudioPlayer(with: audioURL)
+            audioPlayer?.currentTime = 0  // Reset to beginning
+            audioPlayer?.play()
+            isPlayingAudio = true
+        } catch {
+            print("Failed to restart audio: \(error)")
+        }
+    }
+    
+    func cleanupAudio() {
+        if isPlayingAudio {
+            audioPlayer?.stop()
+            isPlayingAudio = false
+        }
+        audioPlayer = nil
+        deactivateAudioSession()
+    }
+    
+    // MARK: - Private Audio Helpers
+    private func configureAudioSession() throws {
+        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+        try AVAudioSession.sharedInstance().setActive(true)
+    }
+    
+    private func deactivateAudioSession() {
         do {
             try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         } catch {
             print("Failed to deactivate audio session: \(error)")
+        }
+    }
+    
+    private func getAudioURL(for passage: ReadingPassage) -> URL? {
+        guard let audioFilePath = passage.audioFilePath else {
+            print("No audio file available for this passage")
+            return nil
+        }
+        
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let audioURL = documentsPath.appendingPathComponent("\(audioFilePath).mp3")
+        
+        guard FileManager.default.fileExists(atPath: audioURL.path) else {
+            print("Audio file does not exist at path: \(audioURL.path)")
+            return nil
+        }
+        
+        return audioURL
+    }
+    
+    private func setupAudioPlayer(with url: URL) throws {
+        if audioPlayer == nil || audioPlayer?.url != url {
+            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer?.delegate = self
+            audioPlayer?.prepareToPlay()
         }
     }
     
@@ -177,13 +221,7 @@ class ReadingManager: NSObject, ObservableObject {
 extension ReadingManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         isPlayingAudio = false
-        
-        // Deactivate audio session when audio finishes
-        do {
-            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        } catch {
-            print("Failed to deactivate audio session: \(error)")
-        }
+        deactivateAudioSession()
     }
     
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
@@ -191,12 +229,6 @@ extension ReadingManager: AVAudioPlayerDelegate {
         if let error = error {
             print("Audio player decode error: \(error)")
         }
-        
-        // Deactivate audio session on error
-        do {
-            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        } catch {
-            print("Failed to deactivate audio session: \(error)")
-        }
+        deactivateAudioSession()
     }
 }

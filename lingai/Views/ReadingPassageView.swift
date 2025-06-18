@@ -38,16 +38,21 @@ struct ReadingPassageView: View {
                     // Detect swipe from left edge
                     if value.startLocation.x < 150 && value.translation.width > 100 && abs(value.translation.height) < 100 {
                         showingControls = true
+                        readingManager.pauseAudioOnExit()
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
         )
+        .onDisappear {
+            readingManager.pauseAudioOnExit()
+        }
         .overlay(
             // Custom navigation bar overlay
             VStack {
                 if showingControls {
                     HStack {
                         Button(action: {
+                            readingManager.pauseAudioOnExit()
                             presentationMode.wrappedValue.dismiss()
                         }) {
                             Image(systemName: "chevron.left")
@@ -146,25 +151,44 @@ struct ReadingPassageView: View {
                     }
                     .overlay(
                         VStack(spacing: 12) {
-                            // Audio play button
+                            // Audio controls
                             if passage.audioFilePath != nil {
-                                Button(action: {
-                                    if readingManager.isPlayingAudio {
-                                        readingManager.pauseAudio()
-                                    } else {
-                                        readingManager.playAudio(for: passage)
+                                HStack(spacing: 12) {
+                                    // Play/Pause button
+                                    Button(action: {
+                                        if readingManager.isPlayingAudio {
+                                            readingManager.pauseAudio()
+                                        } else {
+                                            readingManager.playAudio(for: passage)
+                                        }
+                                    }) {
+                                        HStack {
+                                            Image(systemName: readingManager.isPlayingAudio ? "pause.fill" : "play.fill")
+                                            Text(readingManager.isPlayingAudio ? "Pause" : "Play")
+                                        }
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.green)
+                                        .cornerRadius(12)
                                     }
-                                }) {
-                                    HStack {
-                                        Image(systemName: readingManager.isPlayingAudio ? "pause.fill" : "play.fill")
-                                        Text(readingManager.isPlayingAudio ? "Pause Audio" : "Play Audio")
+                                    
+                                    // Restart button
+                                    Button(action: {
+                                        readingManager.restartAudio(for: passage)
+                                    }) {
+                                        HStack {
+                                            Image(systemName: "arrow.clockwise")
+                                            Text("Restart")
+                                        }
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Color.orange)
+                                        .cornerRadius(12)
                                     }
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(Color.green)
-                                    .cornerRadius(12)
                                 }
                             }
                             
@@ -280,6 +304,7 @@ struct ReadingPassageView: View {
             }
             
             Button("Close") {
+                readingManager.cleanupAudio()  // Final cleanup when completely done
                 presentationMode.wrappedValue.dismiss()
             }
             .buttonStyle(.borderedProminent)
