@@ -31,12 +31,13 @@ struct ReadingPassageView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarHidden(true)
         .toolbar(showingControls ? .visible : .hidden, for: .tabBar)
-        .ignoresSafeArea(.all)
+        .ignoresSafeArea(showingControls ? [] : .all)
         .simultaneousGesture(
             DragGesture(minimumDistance: 50)
                 .onChanged { value in
                     // Detect swipe from left edge
                     if value.startLocation.x < 150 && value.translation.width > 100 && abs(value.translation.height) < 100 {
+                        showingControls = true
                         presentationMode.wrappedValue.dismiss()
                     }
                 }
@@ -93,15 +94,32 @@ struct ReadingPassageView: View {
                         .padding(.top, 40)
                     
                     Text(passage.content)
-                        .font(.title3)
-                        .lineSpacing(8)
+                        .font(.body)
+                        .lineSpacing(6)
                         .padding(.bottom, 100)
                 }
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 20)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollDisabled(false)
             .background(Color(.systemBackground))
+            .overlay(
+                // Status bar area overlay when in focused mode
+                VStack {
+                    if !showingControls {
+                        LinearGradient(
+                            colors: [Color(.systemBackground).opacity(0.9), Color(.systemBackground).opacity(0.6), Color.clear],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: 50)
+                        .transition(.opacity)
+                    }
+                    Spacer()
+                }
+                .animation(.easeInOut(duration: 0.3), value: showingControls),
+                alignment: .top
+            )
             .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     showingControls.toggle()
@@ -140,7 +158,7 @@ struct ReadingPassageView: View {
                                 .cornerRadius(12)
                         }
                         .padding(.horizontal, 24)
-                        .padding(.bottom, 90),
+                        .padding(.bottom, 10),
                         alignment: .bottom
                     )
                 }
