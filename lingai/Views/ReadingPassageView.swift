@@ -32,6 +32,15 @@ struct ReadingPassageView: View {
         .navigationBarHidden(true)
         .toolbar(showingControls ? .visible : .hidden, for: .tabBar)
         .ignoresSafeArea(.all)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 50)
+                .onChanged { value in
+                    // Detect swipe from left edge
+                    if value.startLocation.x < 150 && value.translation.width > 100 && abs(value.translation.height) < 100 {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                }
+        )
         .overlay(
             // Custom navigation bar overlay
             VStack {
