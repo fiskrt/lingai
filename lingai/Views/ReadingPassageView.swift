@@ -29,8 +29,47 @@ struct ReadingPassageView: View {
         }
         .navigationTitle(passage.title)
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarHidden(!showingControls)
+        .navigationBarHidden(true)
         .toolbar(showingControls ? .visible : .hidden, for: .tabBar)
+        .ignoresSafeArea(.all)
+        .overlay(
+            // Custom navigation bar overlay
+            VStack {
+                if showingControls {
+                    HStack {
+                        Button(action: {
+                            presentationMode.wrappedValue.dismiss()
+                        }) {
+                            Image(systemName: "chevron.left")
+                                .font(.title2)
+                                .foregroundColor(.primary)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(passage.title)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Spacer()
+                        
+                        // Invisible spacer to center title
+                        Image(systemName: "chevron.left")
+                            .font(.title2)
+                            .opacity(0)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                    .background(.ultraThinMaterial)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+                
+                Spacer()
+                
+            }
+            .animation(.easeInOut(duration: 0.3), value: showingControls)
+        )
     }
     
     
@@ -60,24 +99,41 @@ struct ReadingPassageView: View {
                 }
             }
             
-            // Floating start questions button
+            // Bottom button with backdrop
             if showingControls {
                 VStack {
                     Spacer()
-                    Button(action: {
-                        showingQuestions = true
-                        showingControls = false
-                    }) {
-                        Text("Start Questions")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.duoBlue)
-                            .cornerRadius(12)
+                    
+                    // Gradient backdrop to make button more visible
+                    VStack(spacing: 0) {
+                        LinearGradient(
+                            colors: [Color(.systemBackground).opacity(0), Color(.systemBackground)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: 60)
+                        
+                        Rectangle()
+                            .fill(Color(.systemBackground))
+                            .frame(height: 80)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 40)
+                    .overlay(
+                        Button(action: {
+                            showingQuestions = true
+                            showingControls = false
+                        }) {
+                            Text("Start Questions")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.duoBlue)
+                                .cornerRadius(12)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 120),
+                        alignment: .bottom
+                    )
                 }
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
