@@ -142,20 +142,44 @@ struct ReadingPassageView: View {
                         
                         Rectangle()
                             .fill(Color(.systemBackground))
-                            .frame(height: 80)
+                            .frame(height: 120)
                     }
                     .overlay(
-                        Button(action: {
-                            showingQuestions = true
-                            showingControls = false
-                        }) {
-                            Text("Start Questions")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.duoBlue)
-                                .cornerRadius(12)
+                        VStack(spacing: 12) {
+                            // Audio play button
+                            if passage.audioFilePath != nil {
+                                Button(action: {
+                                    if readingManager.isPlayingAudio {
+                                        readingManager.pauseAudio()
+                                    } else {
+                                        readingManager.playAudio(for: passage)
+                                    }
+                                }) {
+                                    HStack {
+                                        Image(systemName: readingManager.isPlayingAudio ? "pause.fill" : "play.fill")
+                                        Text(readingManager.isPlayingAudio ? "Pause Audio" : "Play Audio")
+                                    }
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.green)
+                                    .cornerRadius(12)
+                                }
+                            }
+                            
+                            Button(action: {
+                                showingQuestions = true
+                                showingControls = false
+                            }) {
+                                Text("Start Questions")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.duoBlue)
+                                    .cornerRadius(12)
+                            }
                         }
                         .padding(.horizontal, 24)
                         .padding(.bottom, 10),

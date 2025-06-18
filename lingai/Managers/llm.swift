@@ -7,6 +7,7 @@
 
 
 import Foundation
+import AVFoundation
 
 // MARK: - Configuration
 class Config {
@@ -18,6 +19,15 @@ class Config {
               let plist = NSDictionary(contentsOfFile: path),
               let apiKey = plist["MistralAPIKey"] as? String else {
             fatalError("Config.plist not found or MistralAPIKey not set")
+        }
+        return apiKey
+    }()
+    
+    lazy var openAIAPIKey: String = {
+        guard let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
+              let plist = NSDictionary(contentsOfFile: path),
+              let apiKey = plist["OpenAIAPIKey"] as? String else {
+            fatalError("Config.plist not found or OpenAIAPIKey not set")
         }
         return apiKey
     }()
@@ -162,4 +172,66 @@ func generateReadingPassage(vocabularyWords: [String], customInstructions: Strin
     
     let passage = try JSONDecoder().decode(LLMReadingPassage.self, from: jsonData)
     return passage
+}
+
+// MARK: - Text-to-Speech Manager
+class TTSManager {
+    static let shared = TTSManager()
+    private init() {}
+    
+    func generateSpeech(text: String, filename: String) async throws -> URL {
+        let first50 = String(text.prefix(50))
+        let last50 = String(text.suffix(50))
+        let totalChars = text.count
+        
+        print("🔊 OpenAI TTS API Call:")
+        print("📝 First 50 chars: \"\(first50)\"")
+        print("📝 Last 50 chars: \"\(last50)\"")
+        print("📊 Total characters: \(totalChars)")
+        print("🎵 Voice: coral")
+        print("📁 Filename: \(filename)")
+        
+        let url = URL(string: "https://api.openai.com/v1/audio/speech")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.allHTTPHeaderFields = [
+            "Authorization": "Bearer \(Config.shared.openAIAPIKey)",
+            "Content-Type": "application/json"
+        ]
+        
+        let body: [String: Any] = [
+            "model": "gpt-4o-mini-tts",
+            "input": text,
+            "voice": "coral",
+            "instructions": "Speak in a clear, natural tone suitable for German language learners."
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse, 
+              httpResponse.statusCode == 200 else {
+            throw NSError(domain: "TTSError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to generate speech"])
+        }
+        
+        // Save audio file to documents directory
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let audioURL = documentsPath.appendingPathComponent("\(filename).mp3")
+        
+        try data.write(to: audioURL)
+        
+        return audioURL
+    }
+    
+    func generateSpeechInBackground(text: String, filename: String) {
+        Task {
+            do {
+                _ = try await generateSpeech(text: text, filename: filename)
+                print("TTS generated successfully for: \(filename)")
+            } catch {
+                print("TTS generation failed: \(error)")
+            }
+        }
+    }
 }

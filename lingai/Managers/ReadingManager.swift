@@ -1,16 +1,20 @@
 import Foundation
+import AVFoundation
 
-class ReadingManager: ObservableObject {
+class ReadingManager: NSObject, ObservableObject {
     @Published var readingPassages: [ReadingPassage] = []
     @Published var completedSessions: [ReadingSession] = []
     @Published var isGenerating = false
     @Published var errorMessage: String?
+    @Published var isPlayingAudio = false
     
     private let userDefaults = UserDefaults.standard
+    private var audioPlayer: AVAudioPlayer?
     private let passagesKey = "readingPassages"
     private let sessionsKey = "readingSessions"
     
-    init() {
+    override init() {
+        super.init()
         loadPassages()
         loadSessions()
     }
@@ -52,6 +56,16 @@ class ReadingManager: ObservableObject {
                 self.readingPassages.append(passage)
                 self.savePassages()
                 self.isGenerating = false
+                
+                // Generate TTS audio in background
+                let audioFilename = "reading_\(passage.id.uuidString)"
+                TTSManager.shared.generateSpeechInBackground(text: passage.content, filename: audioFilename)
+                
+                // Update passage with audio file path
+                if let index = self.readingPassages.firstIndex(where: { $0.id == passage.id }) {
+                    self.readingPassages[index].audioFilePath = audioFilename
+                    self.savePassages()
+                }
             }
         } catch {
             DispatchQueue.main.async {
@@ -81,6 +95,46 @@ class ReadingManager: ObservableObject {
         return Int((Double(correct) / Double(questions.count)) * 100)
     }
     
+    func playAudio(for passage: ReadingPassage) {
+        guard let audioFilePath = passage.audioFilePath else {
+            print("No audio file available for this passage")
+            return
+        }
+        
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let audioURL = documentsPath.appendingPathComponent("\(audioFilePath).mp3")
+        
+        guard FileManager.default.fileExists(atPath: audioURL.path) else {
+            print("Audio file does not exist at path: \(audioURL.path)")
+            return
+        }
+        
+        do {
+            // If audioPlayer doesn't exist or is for a different file, create new one
+            if audioPlayer == nil || audioPlayer?.url != audioURL {
+                audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
+                audioPlayer?.delegate = self
+                audioPlayer?.prepareToPlay()
+            }
+            
+            audioPlayer?.play()
+            isPlayingAudio = true
+        } catch {
+            print("Failed to play audio: \(error)")
+        }
+    }
+    
+    func pauseAudio() {
+        audioPlayer?.pause()
+        isPlayingAudio = false
+    }
+    
+    func stopAudio() {
+        audioPlayer?.stop()
+        audioPlayer?.currentTime = 0
+        isPlayingAudio = false
+    }
+    
     private func loadPassages() {
         if let data = userDefaults.data(forKey: passagesKey),
            let passages = try? JSONDecoder().decode([ReadingPassage].self, from: data) {
@@ -104,6 +158,20 @@ class ReadingManager: ObservableObject {
     private func saveSessions() {
         if let data = try? JSONEncoder().encode(completedSessions) {
             userDefaults.set(data, forKey: sessionsKey)
+        }
+    }
+}
+
+// MARK: - AVAudioPlayerDelegate
+extension ReadingManager: AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        isPlayingAudio = false
+    }
+    
+    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        isPlayingAudio = false
+        if let error = error {
+            print("Audio player decode error: \(error)")
         }
     }
 }

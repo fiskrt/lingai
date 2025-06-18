@@ -7,13 +7,15 @@ struct ReadingPassage: Identifiable, Codable {
     let questions: [ComprehensionQuestion]
     let vocabularyWords: [String]
     let timestamp: Date
+    var audioFilePath: String?
     
-    init(title: String, content: String, questions: [ComprehensionQuestion], vocabularyWords: [String], timestamp: Date = Date()) {
+    init(title: String, content: String, questions: [ComprehensionQuestion], vocabularyWords: [String], timestamp: Date = Date(), audioFilePath: String? = nil) {
         self.title = title
         self.content = content
         self.questions = questions
         self.vocabularyWords = vocabularyWords
         self.timestamp = timestamp
+        self.audioFilePath = audioFilePath
     }
 }
 
