@@ -7,9 +7,11 @@ class ReadingManager: NSObject, ObservableObject {
     @Published var isGenerating = false
     @Published var errorMessage: String?
     @Published var isPlayingAudio = false
+    @Published var hasAudioBeenStarted = false
     
     private let userDefaults = UserDefaults.standard
     private var audioPlayer: AVAudioPlayer?
+    private var currentPassageId: UUID?
     private let passagesKey = "readingPassages"
     private let sessionsKey = "readingSessions"
     
@@ -98,11 +100,18 @@ class ReadingManager: NSObject, ObservableObject {
     func playAudio(for passage: ReadingPassage) {
         guard let audioURL = getAudioURL(for: passage) else { return }
         
+        // If this is a different passage, reset audio state
+        if currentPassageId != passage.id {
+            resetAudioStateForNewPassage()
+            currentPassageId = passage.id
+        }
+        
         do {
             try configureAudioSession()
             try setupAudioPlayer(with: audioURL)
             audioPlayer?.play()
             isPlayingAudio = true
+            hasAudioBeenStarted = true
         } catch {
             print("Failed to play audio: \(error)")
         }
@@ -131,12 +140,18 @@ class ReadingManager: NSObject, ObservableObject {
     func restartAudio(for passage: ReadingPassage) {
         guard let audioURL = getAudioURL(for: passage) else { return }
         
+        // Update current passage if different
+        if currentPassageId != passage.id {
+            currentPassageId = passage.id
+        }
+        
         do {
             try configureAudioSession()
             try setupAudioPlayer(with: audioURL)
             audioPlayer?.currentTime = 0  // Reset to beginning
             audioPlayer?.play()
             isPlayingAudio = true
+            hasAudioBeenStarted = true
         } catch {
             print("Failed to restart audio: \(error)")
         }
@@ -148,7 +163,29 @@ class ReadingManager: NSObject, ObservableObject {
             isPlayingAudio = false
         }
         audioPlayer = nil
+        hasAudioBeenStarted = false
+        currentPassageId = nil
         deactivateAudioSession()
+    }
+    
+    private func resetAudioStateForNewPassage() {
+        if isPlayingAudio {
+            audioPlayer?.stop()
+            isPlayingAudio = false
+        }
+        audioPlayer = nil
+        hasAudioBeenStarted = false
+        deactivateAudioSession()
+    }
+    
+    func checkPassageChange(for passage: ReadingPassage) {
+        // Reset state only if this is a different passage
+        if currentPassageId != nil && currentPassageId != passage.id {
+            resetAudioStateForNewPassage()
+            currentPassageId = passage.id
+        } else if currentPassageId == nil {
+            currentPassageId = passage.id
+        }
     }
     
     // MARK: - Private Audio Helpers

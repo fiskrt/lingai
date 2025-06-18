@@ -43,6 +43,9 @@ struct ReadingPassageView: View {
                     }
                 }
         )
+        .onAppear {
+            readingManager.checkPassageChange(for: passage)
+        }
         .onDisappear {
             readingManager.pauseAudioOnExit()
         }
@@ -164,7 +167,7 @@ struct ReadingPassageView: View {
                                     }) {
                                         HStack {
                                             Image(systemName: readingManager.isPlayingAudio ? "pause.fill" : "play.fill")
-                                            Text(readingManager.isPlayingAudio ? "Pause" : "Play")
+                                            Text(readingManager.isPlayingAudio ? "Pause" : (readingManager.hasAudioBeenStarted ? "Continue" : "Play"))
                                         }
                                         .font(.headline)
                                         .foregroundColor(.white)
@@ -174,20 +177,22 @@ struct ReadingPassageView: View {
                                         .cornerRadius(12)
                                     }
                                     
-                                    // Restart button
-                                    Button(action: {
-                                        readingManager.restartAudio(for: passage)
-                                    }) {
-                                        HStack {
-                                            Image(systemName: "arrow.clockwise")
-                                            Text("Restart")
+                                    // Restart button - show when audio has been started (playing or paused)
+                                    if readingManager.hasAudioBeenStarted {
+                                        Button(action: {
+                                            readingManager.restartAudio(for: passage)
+                                        }) {
+                                            HStack {
+                                                Image(systemName: "arrow.clockwise")
+                                                Text("Restart")
+                                            }
+                                            .font(.headline)
+                                            .foregroundColor(.white)
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(Color.orange)
+                                            .cornerRadius(12)
                                         }
-                                        .font(.headline)
-                                        .foregroundColor(.white)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Color.orange)
-                                        .cornerRadius(12)
                                     }
                                 }
                             }
