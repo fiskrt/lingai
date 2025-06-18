@@ -110,6 +110,10 @@ class ReadingManager: NSObject, ObservableObject {
         }
         
         do {
+            // Configure audio session for playback even in silent mode
+            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
+            try AVAudioSession.sharedInstance().setActive(true)
+            
             // If audioPlayer doesn't exist or is for a different file, create new one
             if audioPlayer == nil || audioPlayer?.url != audioURL {
                 audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
@@ -133,6 +137,13 @@ class ReadingManager: NSObject, ObservableObject {
         audioPlayer?.stop()
         audioPlayer?.currentTime = 0
         isPlayingAudio = false
+        
+        // Deactivate audio session when stopping
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("Failed to deactivate audio session: \(error)")
+        }
     }
     
     private func loadPassages() {
@@ -166,12 +177,26 @@ class ReadingManager: NSObject, ObservableObject {
 extension ReadingManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         isPlayingAudio = false
+        
+        // Deactivate audio session when audio finishes
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("Failed to deactivate audio session: \(error)")
+        }
     }
     
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         isPlayingAudio = false
         if let error = error {
             print("Audio player decode error: \(error)")
+        }
+        
+        // Deactivate audio session on error
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("Failed to deactivate audio session: \(error)")
         }
     }
 }
