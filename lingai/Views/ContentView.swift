@@ -22,16 +22,16 @@ struct ContentView: View {
                     Text("Practice")
                 }
             
+            ReadingView(wordManager: wordManager)
+                .tabItem {
+                    Image("mysymbol")
+                    Text("Comprehend")
+                }
+            
             GrammarPracticeView()
                 .tabItem {
                     Image(systemName: "text.book.closed.fill")
                     Text("Grammar")
-                }
-            
-            ListeningPracticeView()
-                .tabItem {
-                    Image(systemName: "headphones")
-                    Text("Listening")
                 }
         }
         .accentColor(.duoBlue)
