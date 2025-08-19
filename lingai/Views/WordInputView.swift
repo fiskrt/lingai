@@ -7,6 +7,7 @@ struct WordInputView: View {
     @State private var selectedWord: Word?
     @State private var showingWordDetail = false
     @State private var showSuccessAnimation = false
+    @Binding var showingSettings: Bool
     
     var body: some View {
         NavigationView {
@@ -36,15 +37,28 @@ struct WordInputView: View {
                                 
                                 Spacer()
                                 
-                                Text("\(wordManager.words.count)")
-                                    .font(.caption.bold())
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(Color.duoOrange)
-                                    )
+                                HStack(spacing: 8) {
+                                    Text("\(wordManager.words.count)")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.duoOrange)
+                                        )
+                                    
+                                    Button(action: {
+                                        showingSettings = true
+                                    }) {
+                                        Image(systemName: "gearshape.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.duoBlue)
+                                            .padding(6)
+                                            .background(Circle().fill(Color.cardBackground))
+                                            .overlay(Circle().stroke(Color.duoBlue.opacity(0.3), lineWidth: 1))
+                                    }
+                                }
                             }
                             .padding(.horizontal, 20)
                             .padding(.top, 20)
