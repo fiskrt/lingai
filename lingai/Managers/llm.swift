@@ -14,23 +14,66 @@ class Config {
     static let shared = Config()
     private init() {}
     
-    lazy var mistralAPIKey: String = {
-        guard let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
-              let plist = NSDictionary(contentsOfFile: path),
-              let apiKey = plist["MistralAPIKey"] as? String else {
-            fatalError("Config.plist not found or MistralAPIKey not set")
-        }
-        return apiKey
-    }()
+    private var _mistralAPIKey: String?
+    private var _openAIAPIKey: String?
     
-    lazy var openAIAPIKey: String = {
+    var mistralAPIKey: String {
+        if let key = _mistralAPIKey {
+            return key
+        }
+        
+        // Try UserDefaults first
+        if let savedKey = UserDefaults.standard.string(forKey: "MistralAPIKey"), !savedKey.isEmpty {
+            _mistralAPIKey = savedKey
+            return savedKey
+        }
+        
+        // Fall back to plist
         guard let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
               let plist = NSDictionary(contentsOfFile: path),
-              let apiKey = plist["OpenAIAPIKey"] as? String else {
-            fatalError("Config.plist not found or OpenAIAPIKey not set")
+              let apiKey = plist["MistralAPIKey"] as? String, !apiKey.isEmpty else {
+            return ""
         }
+        _mistralAPIKey = apiKey
         return apiKey
-    }()
+    }
+    
+    var openAIAPIKey: String {
+        if let key = _openAIAPIKey {
+            return key
+        }
+        
+        // Try UserDefaults first
+        if let savedKey = UserDefaults.standard.string(forKey: "OpenAIAPIKey"), !savedKey.isEmpty {
+            _openAIAPIKey = savedKey
+            return savedKey
+        }
+        
+        // Fall back to plist
+        guard let path = Bundle.main.path(forResource: "Config", ofType: "plist"),
+              let plist = NSDictionary(contentsOfFile: path),
+              let apiKey = plist["OpenAIAPIKey"] as? String, !apiKey.isEmpty else {
+            return ""
+        }
+        _openAIAPIKey = apiKey
+        return apiKey
+    }
+    
+    func getCurrentMistralAPIKey() -> String {
+        return mistralAPIKey
+    }
+    
+    func getCurrentOpenAIAPIKey() -> String {
+        return openAIAPIKey
+    }
+    
+    func updateAPIKeys(mistralKey: String, openAIKey: String) {
+        _mistralAPIKey = mistralKey
+        _openAIAPIKey = openAIKey
+        
+        UserDefaults.standard.set(mistralKey, forKey: "MistralAPIKey")
+        UserDefaults.standard.set(openAIKey, forKey: "OpenAIAPIKey")
+    }
 }
 
 struct ChatResponse: Codable {
