@@ -136,7 +136,7 @@ struct SettingsView: View {
                                 Spacer()
                             }
                             
-                            Text("API keys are stored solely on your device.\nWe cannot see them.\nRequests to API are encrypted over https. ")
+                            Text("API keys are stored solely on your device.\nRequests to APIs are encrypted over https.")
                                 .font(.subheadline)
                                 .foregroundColor(.secondaryText)
                         }
