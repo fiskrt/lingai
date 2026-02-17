@@ -18,6 +18,7 @@ struct GrammarPracticeView: View {
     @State private var isGeneratingSentence = false
     @State private var isGrading = false
     @State private var errorMessage: String?
+    @State private var isSetupExpanded = true
 
     private let levelOptions = ["A1", "A2", "B1"]
     private let topics: [GrammarTopic] = [
@@ -36,17 +37,34 @@ struct GrammarPracticeView: View {
                 )
                 .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 14) {
-                        header
-                        setupCard
-                        sentenceCard
-                        inputCard
-                        feedbackCard
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 14) {
+                            header
+                            setupCard
+                            sentenceCard
+                            inputCard
+                            feedbackCard
+                                .id("feedbackCard")
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, 30)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 30)
+                    .onChange(of: isGrading) { _, newValue in
+                        if newValue {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo("feedbackCard", anchor: .top)
+                            }
+                        }
+                    }
+                    .onChange(of: gradingFeedback) { _, newValue in
+                        if !newValue.isEmpty {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proxy.scrollTo("feedbackCard", anchor: .top)
+                            }
+                        }
+                    }
                 }
             }
             .navigationBarHidden(true)
@@ -75,62 +93,78 @@ struct GrammarPracticeView: View {
 
     private var setupCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Choose Topics")
-                .font(.caption.bold())
-                .foregroundColor(.secondaryText)
-
-            HStack(spacing: 8) {
-                ForEach(topics) { topic in
-                    Button(topic.label) {
-                        toggleTopic(topic.id)
-                    }
-                    .font(.caption.bold())
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .foregroundColor(selectedTopics.contains(topic.id) ? .white : .duoOrange)
-                    .background(
-                        Capsule().fill(
-                            selectedTopics.contains(topic.id)
-                            ? LinearGradient(colors: [.duoOrange, .duoRed], startPoint: .leading, endPoint: .trailing)
-                            : LinearGradient(colors: [Color.duoOrange.opacity(0.12)], startPoint: .leading, endPoint: .trailing)
-                        )
-                    )
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isSetupExpanded.toggle()
                 }
-            }
-
-            HStack {
-                Text("Level")
-                    .font(.caption.bold())
-                    .foregroundColor(.secondaryText)
-                Spacer()
-                Picker("Level", selection: $selectedLevel) {
-                    ForEach(levelOptions, id: \.self) { level in
-                        Text(level).tag(level)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 220)
-            }
-
-            Button(action: generateSentence) {
+            } label: {
                 HStack {
-                    if isGeneratingSentence {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Image(systemName: "wand.and.stars")
-                    }
-                    Text(isGeneratingSentence ? "Generating..." : (englishSentence.isEmpty ? "Generate 5 Sentences" : "New 5 Sentences"))
+                    Text("Exercise Setup")
+                        .font(.caption.bold())
+                        .foregroundColor(.secondaryText)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.caption.bold())
+                        .foregroundColor(.secondaryText)
+                        .rotationEffect(.degrees(isSetupExpanded ? 0 : -90))
                 }
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(Color.duoOrange)
-                .cornerRadius(12)
             }
-            .disabled(isGeneratingSentence || selectedTopics.isEmpty)
-            .opacity((isGeneratingSentence || selectedTopics.isEmpty) ? 0.7 : 1)
+            .buttonStyle(.plain)
+
+            if isSetupExpanded {
+                HStack(spacing: 8) {
+                    ForEach(topics) { topic in
+                        Button(topic.label) {
+                            toggleTopic(topic.id)
+                        }
+                        .font(.caption.bold())
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .foregroundColor(selectedTopics.contains(topic.id) ? .white : .duoOrange)
+                        .background(
+                            Capsule().fill(
+                                selectedTopics.contains(topic.id)
+                                ? LinearGradient(colors: [.duoOrange, .duoRed], startPoint: .leading, endPoint: .trailing)
+                                : LinearGradient(colors: [Color.duoOrange.opacity(0.12)], startPoint: .leading, endPoint: .trailing)
+                            )
+                        )
+                    }
+                }
+
+                HStack {
+                    Text("Level")
+                        .font(.caption.bold())
+                        .foregroundColor(.secondaryText)
+                    Spacer()
+                    Picker("Level", selection: $selectedLevel) {
+                        ForEach(levelOptions, id: \.self) { level in
+                            Text(level).tag(level)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 220)
+                }
+
+                Button(action: generateSentence) {
+                    HStack {
+                        if isGeneratingSentence {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Image(systemName: "wand.and.stars")
+                        }
+                        Text(isGeneratingSentence ? "Generating..." : (englishSentence.isEmpty ? "Generate 5 Sentences" : "New 5 Sentences"))
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.duoOrange)
+                    .cornerRadius(12)
+                }
+                .disabled(isGeneratingSentence || selectedTopics.isEmpty)
+                .opacity((isGeneratingSentence || selectedTopics.isEmpty) ? 0.7 : 1)
+            }
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color.cardBackground))
@@ -200,11 +234,28 @@ struct GrammarPracticeView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondaryText)
             } else {
-                Text(gradingFeedback)
-                    .font(.subheadline)
-                    .foregroundColor(.primaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(gradingFeedback.components(separatedBy: "\n").enumerated()), id: \.offset) { _, line in
+                        if line.isEmpty {
+                            Text(" ")
+                                .font(.subheadline)
+                                .foregroundColor(.primaryText)
+                        } else if let markdownLine = try? AttributedString(
+                            markdown: line,
+                            options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .full)
+                        ) {
+                            Text(markdownLine)
+                                .font(.subheadline)
+                                .foregroundColor(.primaryText)
+                        } else {
+                            Text(line)
+                                .font(.subheadline)
+                                .foregroundColor(.primaryText)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(10)
                 .background(RoundedRectangle(cornerRadius: 10).fill(Color.surfaceBackground))
 
@@ -250,6 +301,7 @@ struct GrammarPracticeView: View {
                     sentenceBatch = examples
                     sentenceBatchIndex = 0
                     applyCurrentBatchSentence()
+                    isSetupExpanded = false
                     isGeneratingSentence = false
                 }
             } catch {
