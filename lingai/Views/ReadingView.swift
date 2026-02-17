@@ -113,7 +113,7 @@ struct ReadingView: View {
     private var passageScrollView: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                ForEach(readingManager.readingPassages) { passage in
+                ForEach(readingManager.readingPassages.sorted { $0.timestamp > $1.timestamp }) { passage in
                     NavigationLink(destination: ReadingPassageView(passage: passage, readingManager: readingManager)) {
                         EnhancedPassageRow(passage: passage)
                     }
