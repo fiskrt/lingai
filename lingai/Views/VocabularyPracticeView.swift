@@ -1,8 +1,15 @@
 import SwiftUI
 
+private struct PracticePeriodOption: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let subtitle: String
+    let days: Int?
+}
+
 struct VocabularyPracticeView: View {
     @ObservedObject var wordManager: WordManager
-    @State private var selectedPeriod = 7
+    @State private var selectedPeriodDays: Int? = 7
     @State private var currentWordIndex = 0
     @State private var showingAnswer = false
     @State private var practiceWords: [Word] = []
@@ -10,7 +17,14 @@ struct VocabularyPracticeView: View {
     @State private var totalAnswered = 0
     @State private var showPeriodSelector = true
     
-    let periodOptions = [1, 3, 7, 14, 30]
+    private let periodOptions: [PracticePeriodOption] = [
+        PracticePeriodOption(id: "all", title: "All", subtitle: "cards", days: nil),
+        PracticePeriodOption(id: "1", title: "1", subtitle: "day", days: 1),
+        PracticePeriodOption(id: "3", title: "3", subtitle: "days", days: 3),
+        PracticePeriodOption(id: "7", title: "7", subtitle: "days", days: 7),
+        PracticePeriodOption(id: "14", title: "14", subtitle: "days", days: 14),
+        PracticePeriodOption(id: "30", title: "30", subtitle: "days", days: 30)
+    ]
     
     var body: some View {
         NavigationView {
@@ -50,7 +64,7 @@ struct VocabularyPracticeView: View {
                             }
                         }) {
                             HStack {
-                                Text(practiceWords.isEmpty ? "Practice words from the last:" : "Period: \(selectedPeriod) day\(selectedPeriod == 1 ? "" : "s")")
+                                Text(practiceWords.isEmpty ? "Choose practice range:" : "Range: \(selectedPeriodLabel)")
                                     .font(.subheadline)
                                     .foregroundColor(.primaryText)
                                 
@@ -67,12 +81,13 @@ struct VocabularyPracticeView: View {
                         if showPeriodSelector {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 8) {
-                                    ForEach(periodOptions, id: \.self) { days in
+                                    ForEach(periodOptions) { option in
                                         PeriodButton(
-                                            days: days,
-                                            isSelected: selectedPeriod == days
+                                            title: option.title,
+                                            subtitle: option.subtitle,
+                                            isSelected: selectedPeriodDays == option.days
                                         ) {
-                                            selectedPeriod = days
+                                            selectedPeriodDays = option.days
                                             setupPracticeSession()
                                             
                                             // Auto-collapse after selection if we have words
@@ -116,7 +131,7 @@ struct VocabularyPracticeView: View {
                                     .font(.caption)
                                     .foregroundColor(.secondaryText)
                                 
-                                Text("Words in period: \(wordManager.getWordsForPeriod(days: selectedPeriod).count)")
+                                Text("Words in selection: \(availableWordsForSelection().count)")
                                     .font(.caption)
                                     .foregroundColor(.secondaryText)
                             }
@@ -145,6 +160,7 @@ struct VocabularyPracticeView: View {
                             // Flashcard with swipe gestures
                             FlashcardView(
                                 word: practiceWords[currentWordIndex],
+                                positionText: "\(currentWordIndex + 1) of \(practiceWords.count)",
                                 showingAnswer: $showingAnswer,
                                 onCorrect: handleCorrect,
                                 onIncorrect: handleIncorrect
@@ -190,8 +206,22 @@ struct VocabularyPracticeView: View {
         }
     }
     
+    private var selectedPeriodLabel: String {
+        if let days = selectedPeriodDays {
+            return "\(days) day\(days == 1 ? "" : "s")"
+        }
+        return "All cards"
+    }
+
+    private func availableWordsForSelection() -> [Word] {
+        if let days = selectedPeriodDays {
+            return wordManager.getWordsForPeriod(days: days)
+        }
+        return wordManager.words
+    }
+
     private func setupPracticeSession() {
-        let availableWords = wordManager.getWordsForPeriod(days: selectedPeriod)
+        let availableWords = availableWordsForSelection()
         practiceWords = availableWords.shuffled()
         currentWordIndex = 0
         showingAnswer = false
