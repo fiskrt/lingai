@@ -9,6 +9,21 @@
 import Foundation
 import AVFoundation
 
+private func apiErrorMessage(from data: Data, fallback: String) -> String {
+    if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+       let error = json["error"] as? [String: Any],
+       let message = error["message"] as? String,
+       !message.isEmpty {
+        return message
+    }
+
+    if let raw = String(data: data, encoding: .utf8), !raw.isEmpty {
+        return raw
+    }
+
+    return fallback
+}
+
 // MARK: - Configuration
 class Config {
     static let shared = Config()
@@ -118,13 +133,62 @@ func mistralChat(prompt: String) async throws -> String {
         "messages": [["role": "user", "content": prompt]],
         "response_format": ["type": "json_object"]
     ]
-    let jsonData = try JSONSerialization.data(withJSONObject: body, options: [.prettyPrinted])
     request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
     let (data, response) = try await URLSession.shared.data(for: request)
 
     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
         throw NSError(domain: "HTTPError", code: 2, userInfo: nil)
+    }
+
+    let decoded = try JSONDecoder().decode(ChatResponse.self, from: data)
+    return decoded.choices[0].message.content
+}
+
+func openAIChat(prompt: String) async throws -> String {
+    guard !Config.shared.openAIAPIKey.isEmpty else {
+        throw NSError(
+            domain: "ConfigurationError",
+            code: 1001,
+            userInfo: [NSLocalizedDescriptionKey: "OpenAI API key is missing. Add it in Settings."]
+        )
+    }
+
+    var request = URLRequest(url: URL(string: "https://api.openai.com/v1/chat/completions")!)
+    request.httpMethod = "POST"
+    request.allHTTPHeaderFields = [
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": "Bearer \(Config.shared.openAIAPIKey)"
+    ]
+
+    let body: [String: Any] = [
+        "model": "gpt-4o-mini",
+        "messages": [["role": "user", "content": prompt]],
+        "temperature": 0.2
+    ]
+    request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+    let (data, response) = try await URLSession.shared.data(for: request)
+
+    guard let httpResponse = response as? HTTPURLResponse else {
+        throw NSError(
+            domain: "HTTPError",
+            code: 1002,
+            userInfo: [NSLocalizedDescriptionKey: "Invalid response from OpenAI API."]
+        )
+    }
+
+    guard httpResponse.statusCode == 200 else {
+        let message = apiErrorMessage(
+            from: data,
+            fallback: "OpenAI API request failed."
+        )
+        throw NSError(
+            domain: "HTTPError",
+            code: httpResponse.statusCode,
+            userInfo: [NSLocalizedDescriptionKey: "OpenAI API error (\(httpResponse.statusCode)): \(message)"]
+        )
     }
 
     let decoded = try JSONDecoder().decode(ChatResponse.self, from: data)
@@ -163,7 +227,7 @@ func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslatio
         """
     }
 
-    let response = try await mistralChat(prompt: prompt)
+    let response = try await openAIChat(prompt: prompt)
     
     guard let jsonStart = response.firstIndex(of: "{"),
           let jsonEnd = response.lastIndex(of: "}") else {

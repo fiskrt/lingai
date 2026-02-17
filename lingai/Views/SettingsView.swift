@@ -50,7 +50,7 @@ struct SettingsView: View {
                                     Spacer()
                                 }
                                 
-                                Text("Used for German-English translations and reading passages")
+                                Text("Used for reading passage generation")
                                     .font(.caption)
                                     .foregroundColor(.secondaryText)
                                 
@@ -80,7 +80,7 @@ struct SettingsView: View {
                                     Spacer()
                                 }
                                 
-                                Text("Used for text-to-speech audio generation")
+                                Text("Used for translations and text-to-speech audio generation")
                                     .font(.caption)
                                     .foregroundColor(.secondaryText)
                                 
