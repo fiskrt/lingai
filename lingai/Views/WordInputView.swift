@@ -243,6 +243,7 @@ struct WordInputView: View {
                 let newWord = Word(
                     german: isGermanInput ? trimmedInput : result.trans,
                     english: isGermanInput ? result.trans : trimmedInput,
+                    whySwedish: result.why_sv,
                     etymology: result.etym,
                     synonyms: result.synonyms
                 )

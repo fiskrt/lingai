@@ -7,14 +7,16 @@ struct Word: Identifiable, Codable {
     let timestamp: Date
     var isLearned: Bool = false
     var folders: [String] = []
+    var whySwedish: String = ""
     var etymology: String = ""
     var synonyms: String = ""
     
-    init(id: UUID = UUID(), german: String, english: String, folders: [String] = [], etymology: String = "", synonyms: String = "", timestamp: Date = Date()) {
+    init(id: UUID = UUID(), german: String, english: String, folders: [String] = [], whySwedish: String = "", etymology: String = "", synonyms: String = "", timestamp: Date = Date()) {
         self.id = id
         self.german = german
         self.english = english
         self.folders = folders
+        self.whySwedish = whySwedish
         self.etymology = etymology
         self.synonyms = synonyms
         self.timestamp = timestamp
@@ -27,6 +29,7 @@ struct Word: Identifiable, Codable {
         case timestamp
         case isLearned
         case folders
+        case whySwedish
         case etymology
         case synonyms
     }
@@ -40,6 +43,7 @@ struct Word: Identifiable, Codable {
         self.timestamp = try container.decode(Date.self, forKey: .timestamp)
         self.isLearned = try container.decodeIfPresent(Bool.self, forKey: .isLearned) ?? false
         self.folders = try container.decodeIfPresent([String].self, forKey: .folders) ?? []
+        self.whySwedish = try container.decodeIfPresent(String.self, forKey: .whySwedish) ?? ""
         self.etymology = try container.decodeIfPresent(String.self, forKey: .etymology) ?? ""
         self.synonyms = try container.decodeIfPresent(String.self, forKey: .synonyms) ?? ""
     }

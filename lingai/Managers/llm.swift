@@ -198,8 +198,31 @@ func openAIChat(prompt: String) async throws -> String {
 
 struct LLMTranslation: Codable {
     let trans: String
+    let why_sv: String
     let etym: String
     let synonyms: String
+
+    enum CodingKeys: String, CodingKey {
+        case trans
+        case why_sv
+        case etym
+        case synonyms
+    }
+
+    init(trans: String, why_sv: String, etym: String, synonyms: String) {
+        self.trans = trans
+        self.why_sv = why_sv
+        self.etym = etym
+        self.synonyms = synonyms
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.trans = try container.decode(String.self, forKey: .trans)
+        self.why_sv = try container.decodeIfPresent(String.self, forKey: .why_sv) ?? ""
+        self.etym = try container.decodeIfPresent(String.self, forKey: .etym) ?? ""
+        self.synonyms = try container.decodeIfPresent(String.self, forKey: .synonyms) ?? ""
+    }
 }
 
 struct LLMReadingPassage: Codable {
@@ -215,17 +238,49 @@ struct LLMReadingPassage: Codable {
 }
 
 func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslation {
-    let prompt: String
-    
-    if isGerman{
-        prompt = """
-        Respond only with a JSON following format: {"trans":"translation from German to English of '\(phrase)' here", "etym":"etymology of the german phrase here given in English", "synonyms":"2-3 German synonyms for '\(phrase)' separated by commas"}.
-        """
-    } else {
-        prompt = """
-        Respond only with a JSON following format: {"trans":"translation from English to German of '\(phrase)' here", "etym":"etymology of the german phrase here given in English", "synonyms":"2-3 German synonyms for the translated word separated by commas"}.
-        """
+    let direction = isGerman ? "German -> English" : "English -> German"
+    let sourceLanguage = isGerman ? "German" : "English"
+    let targetLanguage = isGerman ? "English" : "German"
+    let prompt = """
+    You are a practical German tutor for Swedish speakers.
+    Task: translate the input and explain it clearly for learning.
+
+    Translation direction: \(direction)
+    Input phrase (\(sourceLanguage)): "\(phrase)"
+
+    Return ONLY valid JSON with this exact schema:
+    {
+      "trans": "string",
+      "why_sv": "sträng på svenska",
+      "etym": "string",
+      "synonyms": "string"
     }
+
+    Requirements:
+    - "trans":
+      Natural and accurate translation into \(targetLanguage), preserving tone/register.
+      Keep it concise.
+    - "why_sv":
+      Write in Swedish, relaxed and intuitive.
+      Explain why this translation makes sense with a short breakdown.
+      Use 2-4 short bullet-style lines separated by newline characters.
+      Mention useful meaning/grammar clues when relevant.
+    - "synonyms":
+      Provide 2-4 German synonyms/near-synonyms.
+      For each one, include the key difference in usage/nuance.
+      Format as one synonym per line:
+      "<word> - <important difference in Swedish>"
+      Keep differences concrete and practical.
+    - "etym":
+      Keep it relaxed, intuitive, and learner-friendly (not formal academic style).
+      If useful, connect to Swedish and/or English cognates or patterns.
+      2-4 short sentences max.
+    - Mention the gender
+
+    Rules:
+    - No markdown, no code fences, no extra keys.
+    - If nuance is uncertain, still provide the best practical guidance.
+    """
 
     let response = try await openAIChat(prompt: prompt)
     
