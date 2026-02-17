@@ -14,6 +14,25 @@ class WordManager: ObservableObject {
         words.append(word)
         saveWords()
     }
+
+    @discardableResult
+    func addWordIfUnique(_ word: Word) -> Bool {
+        let normalizedGerman = word.german.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedEnglish = word.english.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        let exists = words.contains {
+            $0.german.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalizedGerman &&
+            $0.english.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalizedEnglish
+        }
+
+        if exists {
+            return false
+        }
+
+        words.append(word)
+        saveWords()
+        return true
+    }
     
     func deleteWord(at offsets: IndexSet) {
         words.remove(atOffsets: offsets)
@@ -54,6 +73,11 @@ class WordManager: ObservableObject {
     func getWords(inFolder folder: String?) -> [Word] {
         guard let folder = folder else { return words }
         return words.filter { $0.folders.contains(folder) }
+    }
+
+    func getWords(inCategory category: String?) -> [Word] {
+        guard let category = category else { return words }
+        return words.filter { $0.category == category }
     }
     
     private func saveWords() {

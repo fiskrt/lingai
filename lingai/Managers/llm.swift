@@ -237,6 +237,29 @@ struct LLMReadingPassage: Codable {
     }
 }
 
+struct LLMStoryFlashcard: Codable {
+    let german: String
+    let english: String
+    let why_sv: String
+
+    enum CodingKeys: String, CodingKey {
+        case german
+        case english
+        case why_sv
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.german = try container.decode(String.self, forKey: .german)
+        self.english = try container.decode(String.self, forKey: .english)
+        self.why_sv = try container.decodeIfPresent(String.self, forKey: .why_sv) ?? ""
+    }
+}
+
+struct LLMStoryFlashcardsResponse: Codable {
+    let cards: [LLMStoryFlashcard]
+}
+
 func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslation {
     let direction = isGerman ? "German -> English" : "English -> German"
     let sourceLanguage = isGerman ? "German" : "English"
@@ -294,6 +317,52 @@ func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslatio
 
     let translation = try JSONDecoder().decode(LLMTranslation.self, from: jsonData)
     return translation
+}
+
+func generateStoryFlashcards(from text: String, focus: String) async throws -> [LLMStoryFlashcard] {
+    let prompt = """
+    You are creating flashcards for a German learner.
+
+    Task:
+    From the text below, extract 30 useful German words or short phrases for flashcards.
+    Focus type: \(focus)
+
+    Return ONLY valid JSON in this exact format:
+    {
+      "cards": [
+        {
+          "german": "German word or short phrase",
+          "english": "Natural English meaning",
+          "why_sv": "Kort svensk forklaring om nyans/varfor detta ar viktigt"
+        }
+      ]
+    }
+
+    Requirements:
+    - Return exactly 30 cards when possible from the text.
+    - Prefer high-learning-value items (common, reusable, or structurally important).
+    - If focus is grammar: prioritize patterns/chunks (e.g. connectors, verb-preposition chunks, sentence frames).
+    - If focus is vocabulary: prioritize core lexical items and useful collocations.
+    - Keep "german" concise and learner-friendly.
+    - Avoid duplicates.
+    - "why_sv" should be short, practical Swedish guidance.
+    - No markdown, no explanation outside JSON.
+
+    Text:
+    \(text)
+    """
+
+    let response = try await openAIChat(prompt: prompt)
+
+    guard let jsonStart = response.firstIndex(of: "{"),
+          let jsonEnd = response.lastIndex(of: "}") else {
+        throw NSError(domain: "ParseError", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not find JSON in flashcard response."])
+    }
+
+    let jsonSubstring = response[jsonStart...jsonEnd]
+    let jsonData = Data(jsonSubstring.utf8)
+    let parsed = try JSONDecoder().decode(LLMStoryFlashcardsResponse.self, from: jsonData)
+    return parsed.cards
 }
 
 func generateReadingPassage(vocabularyWords: [String], customInstructions: String = "") async throws -> LLMReadingPassage {

@@ -3,6 +3,7 @@ import SwiftUI
 struct ReadingPassageView: View {
     let passage: ReadingPassage
     @ObservedObject var readingManager: ReadingManager
+    @ObservedObject var wordManager: WordManager
     @Environment(\.presentationMode) var presentationMode
     
     @State private var selectedAnswers: [Int] = []
@@ -10,10 +11,14 @@ struct ReadingPassageView: View {
     @State private var currentQuestionIndex = 0
     @State private var showingQuestions = false
     @State private var showingControls = false
+    @State private var showingFlashcardFocusPicker = false
+    @State private var isGeneratingFlashcards = false
+    @State private var flashcardGenerationMessage: String?
     
-    init(passage: ReadingPassage, readingManager: ReadingManager) {
+    init(passage: ReadingPassage, readingManager: ReadingManager, wordManager: WordManager) {
         self.passage = passage
         self.readingManager = readingManager
+        self.wordManager = wordManager
         self._selectedAnswers = State(initialValue: Array(repeating: -1, count: passage.questions.count))
     }
     
@@ -88,6 +93,31 @@ struct ReadingPassageView: View {
             }
             .animation(.easeInOut(duration: 0.3), value: showingControls)
         )
+        .confirmationDialog("Generate Flashcards", isPresented: $showingFlashcardFocusPicker, titleVisibility: .visible) {
+            Button("Vocabulary Focus") {
+                generateFlashcards(focus: "vocabulary")
+            }
+            Button("Grammar Focus") {
+                generateFlashcards(focus: "grammar")
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Choose what type of flashcards to extract from this story.")
+        }
+        .alert("Flashcards", isPresented: Binding(
+            get: { flashcardGenerationMessage != nil },
+            set: { newValue in
+                if !newValue {
+                    flashcardGenerationMessage = nil
+                }
+            }
+        )) {
+            Button("OK") {
+                flashcardGenerationMessage = nil
+            }
+        } message: {
+            Text(flashcardGenerationMessage ?? "")
+        }
     }
     
     
@@ -209,6 +239,28 @@ struct ReadingPassageView: View {
                                     .background(Color.duoBlue)
                                     .cornerRadius(12)
                             }
+
+                            Button(action: {
+                                showingFlashcardFocusPicker = true
+                            }) {
+                                HStack {
+                                    if isGeneratingFlashcards {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    } else {
+                                        Image(systemName: "rectangle.stack.badge.plus")
+                                    }
+                                    Text(isGeneratingFlashcards ? "Generating..." : "Generate Flashcards")
+                                }
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.duoPurple)
+                                .cornerRadius(12)
+                            }
+                            .disabled(isGeneratingFlashcards)
+                            .opacity(isGeneratingFlashcards ? 0.7 : 1.0)
                         }
                         .padding(.horizontal, 24)
                         .padding(.bottom, 10),
@@ -330,6 +382,48 @@ struct ReadingPassageView: View {
             }
         }
         return Int((Double(correct) / Double(passage.questions.count)) * 100)
+    }
+
+    private func generateFlashcards(focus: String) {
+        guard !isGeneratingFlashcards else { return }
+        isGeneratingFlashcards = true
+
+        Task {
+            do {
+                let cards = try await generateStoryFlashcards(from: passage.content, focus: focus)
+                let folderFocus = focus == "grammar" ? "story_grammar" : "story_vocabulary"
+                let addedCount = await MainActor.run { () -> Int in
+                    var count = 0
+                    for card in cards {
+                        let german = card.german.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let english = card.english.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if german.isEmpty || english.isEmpty { continue }
+
+                        let word = Word(
+                            german: german,
+                            english: english,
+                            category: "story_flashcards",
+                            folders: ["story_flashcards", folderFocus, "story_\(passage.id.uuidString)"],
+                            whySwedish: card.why_sv
+                        )
+                        if wordManager.addWordIfUnique(word) {
+                            count += 1
+                        }
+                    }
+                    return count
+                }
+
+                await MainActor.run {
+                    isGeneratingFlashcards = false
+                    flashcardGenerationMessage = "Added \(addedCount) flashcards from this story (\(focus))."
+                }
+            } catch {
+                await MainActor.run {
+                    isGeneratingFlashcards = false
+                    flashcardGenerationMessage = "Failed to generate flashcards: \(error.localizedDescription)"
+                }
+            }
+        }
     }
 }
 

@@ -10,13 +10,14 @@ private struct PracticePeriodOption: Identifiable, Hashable {
 private struct PracticeFolderOption: Identifiable, Hashable {
     let id: String
     let title: String
+    let category: String?
     let folderKey: String?
 }
 
 struct VocabularyPracticeView: View {
     @ObservedObject var wordManager: WordManager
     @State private var selectedPeriodDays: Int? = 7
-    @State private var selectedFolderKey: String? = nil
+    @State private var selectedDeckId: String = "my_words"
     @State private var currentWordIndex = 0
     @State private var showingAnswer = false
     @State private var practiceWords: [Word] = []
@@ -33,8 +34,9 @@ struct VocabularyPracticeView: View {
         PracticePeriodOption(id: "30", title: "30", subtitle: "days", days: 30)
     ]
     private let folderOptions: [PracticeFolderOption] = [
-        PracticeFolderOption(id: "all_words", title: "All Words", folderKey: nil),
-        PracticeFolderOption(id: "hard_words", title: "Hard Words", folderKey: "hard")
+        PracticeFolderOption(id: "my_words", title: "My Words", category: "user", folderKey: nil),
+        PracticeFolderOption(id: "hard_words", title: "Hard Words", category: "user", folderKey: "hard"),
+        PracticeFolderOption(id: "story_flashcards", title: "Story Cards", category: "story_flashcards", folderKey: nil)
     ]
     
     var body: some View {
@@ -72,21 +74,21 @@ struct VocabularyPracticeView: View {
                         HStack(spacing: 8) {
                             ForEach(folderOptions) { option in
                                 Button(action: {
-                                    selectedFolderKey = option.folderKey
-                                    if option.folderKey == "hard" {
+                                    selectedDeckId = option.id
+                                    if option.id == "hard_words" {
                                         selectedPeriodDays = nil
                                     }
                                     setupPracticeSession()
                                 }) {
                                     Text(option.title)
                                         .font(.caption.bold())
-                                        .foregroundColor(selectedFolderKey == option.folderKey ? .white : .duoBlue)
+                                        .foregroundColor(selectedDeckId == option.id ? .white : .duoBlue)
                                         .padding(.horizontal, 12)
                                         .padding(.vertical, 8)
                                         .background(
                                             Capsule()
                                                 .fill(
-                                                    selectedFolderKey == option.folderKey
+                                                    selectedDeckId == option.id
                                                         ? LinearGradient(colors: [.duoBlue, .duoPurple], startPoint: .leading, endPoint: .trailing)
                                                         : LinearGradient(colors: [Color.duoBlue.opacity(0.12)], startPoint: .leading, endPoint: .trailing)
                                                 )
@@ -159,7 +161,7 @@ struct VocabularyPracticeView: View {
                                 .font(.title2.bold())
                                 .foregroundColor(.primaryText)
                             
-                            Text(selectedFolderKey == "hard" ? "No hard words yet. Missed cards will be collected here." : "Add some words in the Add tab first!")
+                            Text(selectedDeckId == "hard_words" ? "No hard words yet. Missed cards will be collected here." : "No words available in this deck.")
                                 .font(.body)
                                 .foregroundColor(.secondaryText)
                             
@@ -251,11 +253,15 @@ struct VocabularyPracticeView: View {
     }
 
     private var selectedFolderLabel: String {
-        selectedFolderKey == "hard" ? "Hard Words" : "All Words"
+        folderOptions.first(where: { $0.id == selectedDeckId })?.title ?? "My Words"
     }
 
     private func availableWordsForSelection() -> [Word] {
-        let baseWords = wordManager.getWords(inFolder: selectedFolderKey)
+        let selectedOption = folderOptions.first(where: { $0.id == selectedDeckId })
+        var baseWords = wordManager.getWords(inCategory: selectedOption?.category)
+        if let folder = selectedOption?.folderKey {
+            baseWords = baseWords.filter { $0.folders.contains(folder) }
+        }
         if let days = selectedPeriodDays {
             let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
             return baseWords.filter { $0.timestamp >= cutoffDate }

@@ -9,6 +9,10 @@ struct WordInputView: View {
     @State private var showingWordLibrary = false
     @State private var showSuccessAnimation = false
     @Binding var showingSettings: Bool
+
+    private var userWords: [Word] {
+        wordManager.words.filter { $0.category == "user" }
+    }
     
     var body: some View {
         NavigationView {
@@ -23,7 +27,7 @@ struct WordInputView: View {
                 
                 VStack(spacing: 0) {
                     // Recent Words Section (now at top)
-                    if !wordManager.words.isEmpty {
+                    if !userWords.isEmpty {
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -50,7 +54,7 @@ struct WordInputView: View {
                                             .overlay(Circle().stroke(Color.duoPurple.opacity(0.3), lineWidth: 1))
                                     }
 
-                                    Text("\(wordManager.words.count)")
+                                    Text("\(userWords.count)")
                                         .font(.caption.bold())
                                         .foregroundColor(.white)
                                         .padding(.horizontal, 8)
@@ -76,7 +80,7 @@ struct WordInputView: View {
                             .padding(.top, 20)
                             
                             List {
-                                ForEach(Array(wordManager.words.suffix(10).reversed())) { word in
+                                ForEach(Array(userWords.suffix(10).reversed())) { word in
                                     WordRowView(word: word) {
                                         selectedWord = word
                                         showingWordDetail = true
@@ -243,6 +247,7 @@ struct WordInputView: View {
                 let newWord = Word(
                     german: isGermanInput ? trimmedInput : result.trans,
                     english: isGermanInput ? result.trans : trimmedInput,
+                    category: "user",
                     whySwedish: result.why_sv,
                     etymology: result.etym,
                     synonyms: result.synonyms
@@ -253,7 +258,8 @@ struct WordInputView: View {
                 // Fallback on error
                 let newWord = Word(
                     german: isGermanInput ? trimmedInput : "failed to trans",
-                    english: isGermanInput ? "failed to trans" : trimmedInput
+                    english: isGermanInput ? "failed to trans" : trimmedInput,
+                    category: "user"
                 )
                 wordManager.addWord(newWord)
             }
@@ -262,7 +268,7 @@ struct WordInputView: View {
     }
     
     private func deleteRecentWords(at offsets: IndexSet) {
-        let recentWords = Array(wordManager.words.suffix(10).reversed())
+        let recentWords = Array(userWords.suffix(10).reversed())
         let wordsToDelete = offsets.map { recentWords[$0] }
         
         for wordToDelete in wordsToDelete {

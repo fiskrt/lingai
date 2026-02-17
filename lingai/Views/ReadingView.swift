@@ -114,7 +114,7 @@ struct ReadingView: View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 ForEach(readingManager.readingPassages.sorted { $0.timestamp > $1.timestamp }) { passage in
-                    NavigationLink(destination: ReadingPassageView(passage: passage, readingManager: readingManager)) {
+                    NavigationLink(destination: ReadingPassageView(passage: passage, readingManager: readingManager, wordManager: wordManager)) {
                         EnhancedPassageRow(passage: passage)
                     }
                     .buttonStyle(PlainButtonStyle())
