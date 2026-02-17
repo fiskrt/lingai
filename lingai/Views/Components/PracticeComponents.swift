@@ -2,24 +2,25 @@ import SwiftUI
 
 // MARK: - Period Button
 struct PeriodButton: View {
-    let days: Int
+    let title: String
+    let subtitle: String
     let isSelected: Bool
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
             VStack(spacing: 2) {
-                Text("\(days)")
+                Text(title)
                     .font(.headline.bold())
                     .foregroundColor(isSelected ? .white : .duoPurple)
                 
-                Text("day\(days == 1 ? "" : "s")")
+                Text(subtitle)
                     .font(.caption2.bold())
                     .foregroundColor(isSelected ? .white : .duoPurple.opacity(0.7))
             }
-            .frame(width: 50, height: 50)
+            .frame(width: 62, height: 54)
             .background(
-                Circle()
+                RoundedRectangle(cornerRadius: 18)
                     .fill(
                         isSelected ?
                         LinearGradient(colors: [.duoPurple, .duoBlue], startPoint: .topLeading, endPoint: .bottomTrailing) :

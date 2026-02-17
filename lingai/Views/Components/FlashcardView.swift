@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FlashcardView: View {
     let word: Word
+    let positionText: String
     @Binding var showingAnswer: Bool
     let onCorrect: () -> Void
     let onIncorrect: () -> Void
@@ -32,6 +33,30 @@ struct FlashcardView: View {
                 
                 // Text content with fixed positioning - word only
                 VStack {
+                    HStack {
+                        Text(showingAnswer ? "ENGLISH" : "GERMAN")
+                            .font(.caption2.bold())
+                            .foregroundColor(.secondaryText)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule().fill(Color.surfaceBackground.opacity(0.9))
+                            )
+
+                        Spacer()
+
+                        if word.isLearned {
+                            Label("Learned", systemImage: "checkmark.seal.fill")
+                                .font(.caption2.bold())
+                                .foregroundColor(.duoGreen)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule().fill(Color.duoGreen.opacity(0.12))
+                                )
+                        }
+                    }
+
                     Spacer()
                     
                     Text(showingAnswer ? word.english : word.german)
@@ -42,6 +67,10 @@ struct FlashcardView: View {
                         .lineLimit(3)
                     
                     Spacer()
+
+                    Text(positionText)
+                        .font(.caption.bold())
+                        .foregroundColor(.secondaryText)
                 }
                 .padding(24)
             }
