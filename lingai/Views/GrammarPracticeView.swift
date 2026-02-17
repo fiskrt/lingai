@@ -19,6 +19,7 @@ struct GrammarPracticeView: View {
     @State private var isGrading = false
     @State private var errorMessage: String?
     @State private var isSetupExpanded = true
+    @FocusState private var isTranslationEditorFocused: Bool
 
     private let levelOptions = ["A1", "A2", "B1"]
     private let topics: [GrammarTopic] = [
@@ -93,23 +94,26 @@ struct GrammarPracticeView: View {
 
     private var setupCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isSetupExpanded.toggle()
-                }
-            } label: {
-                HStack {
-                    Text("Exercise Setup")
-                        .font(.caption.bold())
-                        .foregroundColor(.secondaryText)
-                    Spacer()
+            HStack {
+                Text("Exercise Setup")
+                    .font(.caption.bold())
+                    .foregroundColor(.secondaryText)
+
+                Spacer()
+
+                Button {
+                    isTranslationEditorFocused = false
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isSetupExpanded.toggle()
+                    }
+                } label: {
                     Image(systemName: "chevron.down")
                         .font(.caption.bold())
                         .foregroundColor(.secondaryText)
                         .rotationEffect(.degrees(isSetupExpanded ? 0 : -90))
                 }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
 
             if isSetupExpanded {
                 HStack(spacing: 8) {
@@ -166,6 +170,15 @@ struct GrammarPracticeView: View {
                 .opacity((isGeneratingSentence || selectedTopics.isEmpty) ? 0.7 : 1)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if !isSetupExpanded {
+                isTranslationEditorFocused = false
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isSetupExpanded = true
+                }
+            }
+        }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color.cardBackground))
     }
@@ -195,6 +208,7 @@ struct GrammarPracticeView: View {
 
             TextEditor(text: $studentTranslation)
                 .frame(minHeight: 90)
+                .focused($isTranslationEditorFocused)
                 .padding(8)
                 .background(Color.surfaceBackground)
                 .cornerRadius(10)
@@ -318,6 +332,7 @@ struct GrammarPracticeView: View {
         let submission = studentTranslation.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !submission.isEmpty else { return }
 
+        isTranslationEditorFocused = false
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 
         isGrading = true
