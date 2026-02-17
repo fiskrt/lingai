@@ -6,6 +6,7 @@ struct WordInputView: View {
     @State private var isGermanInput = true
     @State private var selectedWord: Word?
     @State private var showingWordDetail = false
+    @State private var showingWordLibrary = false
     @State private var showSuccessAnimation = false
     @Binding var showingSettings: Bool
     
@@ -38,6 +39,17 @@ struct WordInputView: View {
                                 Spacer()
                                 
                                 HStack(spacing: 8) {
+                                    Button(action: {
+                                        showingWordLibrary = true
+                                    }) {
+                                        Image(systemName: "books.vertical.fill")
+                                            .font(.system(size: 16))
+                                            .foregroundColor(.duoPurple)
+                                            .padding(6)
+                                            .background(Circle().fill(Color.cardBackground))
+                                            .overlay(Circle().stroke(Color.duoPurple.opacity(0.3), lineWidth: 1))
+                                    }
+
                                     Text("\(wordManager.words.count)")
                                         .font(.caption.bold())
                                         .foregroundColor(.white)
@@ -181,6 +193,9 @@ struct WordInputView: View {
                 }
             }
             .navigationBarHidden(true)
+            .sheet(isPresented: $showingWordLibrary) {
+                WordLibraryView(wordManager: wordManager)
+            }
             .overlay(
                 Group {
                     if showingWordDetail, let selectedWord = selectedWord {

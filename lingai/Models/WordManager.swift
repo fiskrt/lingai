@@ -31,10 +31,29 @@ class WordManager: ObservableObject {
             saveWords()
         }
     }
+
+    func addWord(_ word: Word, toFolder folder: String) {
+        guard let index = words.firstIndex(where: { $0.id == word.id }) else { return }
+        if !words[index].folders.contains(folder) {
+            words[index].folders.append(folder)
+            saveWords()
+        }
+    }
+
+    func removeWord(_ word: Word, fromFolder folder: String) {
+        guard let index = words.firstIndex(where: { $0.id == word.id }) else { return }
+        words[index].folders.removeAll { $0 == folder }
+        saveWords()
+    }
     
     func getWordsForPeriod(days: Int) -> [Word] {
         let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
         return words.filter { $0.timestamp >= cutoffDate }
+    }
+
+    func getWords(inFolder folder: String?) -> [Word] {
+        guard let folder = folder else { return words }
+        return words.filter { $0.folders.contains(folder) }
     }
     
     private func saveWords() {

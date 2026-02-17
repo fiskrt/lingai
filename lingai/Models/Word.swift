@@ -1,19 +1,46 @@
 import Foundation
 
 struct Word: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     let german: String
     let english: String
     let timestamp: Date
     var isLearned: Bool = false
+    var folders: [String] = []
     var etymology: String = ""
     var synonyms: String = ""
     
-    init(german: String, english: String, etymology: String = "", synonyms: String = "", timestamp: Date = Date()) {
+    init(id: UUID = UUID(), german: String, english: String, folders: [String] = [], etymology: String = "", synonyms: String = "", timestamp: Date = Date()) {
+        self.id = id
         self.german = german
         self.english = english
+        self.folders = folders
         self.etymology = etymology
         self.synonyms = synonyms
         self.timestamp = timestamp
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case german
+        case english
+        case timestamp
+        case isLearned
+        case folders
+        case etymology
+        case synonyms
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.german = try container.decode(String.self, forKey: .german)
+        self.english = try container.decode(String.self, forKey: .english)
+        self.timestamp = try container.decode(Date.self, forKey: .timestamp)
+        self.isLearned = try container.decodeIfPresent(Bool.self, forKey: .isLearned) ?? false
+        self.folders = try container.decodeIfPresent([String].self, forKey: .folders) ?? []
+        self.etymology = try container.decodeIfPresent(String.self, forKey: .etymology) ?? ""
+        self.synonyms = try container.decodeIfPresent(String.self, forKey: .synonyms) ?? ""
     }
 }

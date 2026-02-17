@@ -7,9 +7,16 @@ private struct PracticePeriodOption: Identifiable, Hashable {
     let days: Int?
 }
 
+private struct PracticeFolderOption: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let folderKey: String?
+}
+
 struct VocabularyPracticeView: View {
     @ObservedObject var wordManager: WordManager
     @State private var selectedPeriodDays: Int? = 7
+    @State private var selectedFolderKey: String? = nil
     @State private var currentWordIndex = 0
     @State private var showingAnswer = false
     @State private var practiceWords: [Word] = []
@@ -24,6 +31,10 @@ struct VocabularyPracticeView: View {
         PracticePeriodOption(id: "7", title: "7", subtitle: "days", days: 7),
         PracticePeriodOption(id: "14", title: "14", subtitle: "days", days: 14),
         PracticePeriodOption(id: "30", title: "30", subtitle: "days", days: 30)
+    ]
+    private let folderOptions: [PracticeFolderOption] = [
+        PracticeFolderOption(id: "all_words", title: "All Words", folderKey: nil),
+        PracticeFolderOption(id: "hard_words", title: "Hard Words", folderKey: "hard")
     ]
     
     var body: some View {
@@ -58,13 +69,39 @@ struct VocabularyPracticeView: View {
                     
                     // Period selector - collapsible
                     VStack(spacing: 12) {
+                        HStack(spacing: 8) {
+                            ForEach(folderOptions) { option in
+                                Button(action: {
+                                    selectedFolderKey = option.folderKey
+                                    if option.folderKey == "hard" {
+                                        selectedPeriodDays = nil
+                                    }
+                                    setupPracticeSession()
+                                }) {
+                                    Text(option.title)
+                                        .font(.caption.bold())
+                                        .foregroundColor(selectedFolderKey == option.folderKey ? .white : .duoBlue)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(
+                                            Capsule()
+                                                .fill(
+                                                    selectedFolderKey == option.folderKey
+                                                        ? LinearGradient(colors: [.duoBlue, .duoPurple], startPoint: .leading, endPoint: .trailing)
+                                                        : LinearGradient(colors: [Color.duoBlue.opacity(0.12)], startPoint: .leading, endPoint: .trailing)
+                                                )
+                                        )
+                                }
+                            }
+                        }
+
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 showPeriodSelector.toggle()
                             }
                         }) {
                             HStack {
-                                Text(practiceWords.isEmpty ? "Choose practice range:" : "Range: \(selectedPeriodLabel)")
+                                Text(practiceWords.isEmpty ? "Choose practice range:" : "Range: \(selectedFolderLabel) • \(selectedPeriodLabel)")
                                     .font(.subheadline)
                                     .foregroundColor(.primaryText)
                                 
@@ -122,7 +159,7 @@ struct VocabularyPracticeView: View {
                                 .font(.title2.bold())
                                 .foregroundColor(.primaryText)
                             
-                            Text("Add some words in the Add tab first!")
+                            Text(selectedFolderKey == "hard" ? "No hard words yet. Missed cards will be collected here." : "Add some words in the Add tab first!")
                                 .font(.body)
                                 .foregroundColor(.secondaryText)
                             
@@ -213,11 +250,17 @@ struct VocabularyPracticeView: View {
         return "All cards"
     }
 
+    private var selectedFolderLabel: String {
+        selectedFolderKey == "hard" ? "Hard Words" : "All Words"
+    }
+
     private func availableWordsForSelection() -> [Word] {
+        let baseWords = wordManager.getWords(inFolder: selectedFolderKey)
         if let days = selectedPeriodDays {
-            return wordManager.getWordsForPeriod(days: days)
+            let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+            return baseWords.filter { $0.timestamp >= cutoffDate }
         }
-        return wordManager.words
+        return baseWords
     }
 
     private func setupPracticeSession() {
@@ -257,6 +300,7 @@ struct VocabularyPracticeView: View {
     
     private func handleIncorrect() {
         totalAnswered += 1
+        wordManager.addWord(practiceWords[currentWordIndex], toFolder: "hard")
         
         // Auto-advance to next card
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
