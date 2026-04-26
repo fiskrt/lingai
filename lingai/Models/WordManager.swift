@@ -1,13 +1,34 @@
 import Foundation
 
+struct CustomFlashcardDeck: Identifiable, Codable, Hashable {
+    let id: String
+    var title: String
+    let prompt: String
+    let createdAt: Date
+    let folderKey: String
+    var wordCount: Int
+
+    init(id: String = UUID().uuidString, title: String, prompt: String, createdAt: Date = Date(), wordCount: Int = 0) {
+        self.id = id
+        self.title = title
+        self.prompt = prompt
+        self.createdAt = createdAt
+        self.folderKey = "custom_deck_\(id)"
+        self.wordCount = wordCount
+    }
+}
+
 class WordManager: ObservableObject {
     @Published var words: [Word] = []
+    @Published var customDecks: [CustomFlashcardDeck] = []
     
     private let userDefaults = UserDefaults.standard
     private let wordsKey = "SavedWords"
+    private let customDecksKey = "CustomFlashcardDecks"
     
     init() {
         loadWords()
+        loadCustomDecks()
     }
     
     func addWord(_ word: Word) {
@@ -79,10 +100,55 @@ class WordManager: ObservableObject {
         guard let category = category else { return words }
         return words.filter { $0.category == category }
     }
+
+    @discardableResult
+    func createCustomDeck(title: String, prompt: String, cards: [LLMStoryFlashcard]) -> CustomFlashcardDeck {
+        var deck = CustomFlashcardDeck(title: title, prompt: prompt)
+
+        for card in cards {
+            let word = Word(
+                german: card.german,
+                english: card.english,
+                category: "custom_flashcard_deck",
+                folders: [deck.folderKey],
+                whySwedish: card.why_sv
+            )
+            addOrAttachWord(word, toFolder: deck.folderKey)
+        }
+
+        deck.wordCount = getWords(inFolder: deck.folderKey).count
+        customDecks.append(deck)
+        saveWords()
+        saveCustomDecks()
+        return deck
+    }
+
+    private func addOrAttachWord(_ word: Word, toFolder folder: String) {
+        let normalizedGerman = word.german.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let normalizedEnglish = word.english.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+
+        if let index = words.firstIndex(where: {
+            $0.german.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalizedGerman &&
+            $0.english.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalizedEnglish
+        }) {
+            if !words[index].folders.contains(folder) {
+                words[index].folders.append(folder)
+            }
+            return
+        }
+
+        words.append(word)
+    }
     
     private func saveWords() {
         if let encoded = try? JSONEncoder().encode(words) {
             userDefaults.set(encoded, forKey: wordsKey)
+        }
+    }
+
+    private func saveCustomDecks() {
+        if let encoded = try? JSONEncoder().encode(customDecks) {
+            userDefaults.set(encoded, forKey: customDecksKey)
         }
     }
     
@@ -90,6 +156,13 @@ class WordManager: ObservableObject {
         if let data = userDefaults.data(forKey: wordsKey),
            let decoded = try? JSONDecoder().decode([Word].self, from: data) {
             words = decoded
+        }
+    }
+
+    private func loadCustomDecks() {
+        if let data = userDefaults.data(forKey: customDecksKey),
+           let decoded = try? JSONDecoder().decode([CustomFlashcardDeck].self, from: data) {
+            customDecks = decoded
         }
     }
 }
