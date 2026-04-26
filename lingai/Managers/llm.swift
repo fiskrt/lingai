@@ -443,6 +443,46 @@ func generateStoryFlashcards(from text: String, focus: String) async throws -> [
     return parsed.cards
 }
 
+func generatePromptFlashcardDeck(prompt deckPrompt: String, count: Int = 30) async throws -> [LLMStoryFlashcard] {
+    let prompt = """
+    You are creating a German vocabulary flashcard deck for a learner.
+
+    User request:
+    \(deckPrompt)
+
+    Return ONLY valid JSON in this exact format:
+    {
+      "cards": [
+        {
+          "german": "German word or short phrase",
+          "english": "Natural English meaning",
+          "why_sv": "Kort svensk forklaring om nyans/varfor detta ar viktigt"
+        }
+      ]
+    }
+
+    Requirements:
+    - Return exactly \(count) cards.
+    - Match the user's requested theme as closely as possible.
+    - Prefer practical everyday words and short reusable phrases.
+    - Keep German entries concise and include articles for nouns when useful.
+    - Avoid duplicates.
+    - "why_sv" should be short, practical Swedish guidance.
+    - No markdown, no explanation outside JSON.
+    """
+
+    let response = try await openAIChat(prompt: prompt, temperature: 0.7)
+
+    guard let jsonStart = response.firstIndex(of: "{"),
+          let jsonEnd = response.lastIndex(of: "}") else {
+        throw NSError(domain: "ParseError", code: 20, userInfo: [NSLocalizedDescriptionKey: "Could not find JSON in prompt flashcard deck response."])
+    }
+
+    let jsonData = Data(response[jsonStart...jsonEnd].utf8)
+    let parsed = try JSONDecoder().decode(LLMStoryFlashcardsResponse.self, from: jsonData)
+    return parsed.cards
+}
+
 func generateReadingPassage(vocabularyWords: [String], customInstructions: String = "") async throws -> LLMReadingPassage {
     let wordsString = vocabularyWords.joined(separator: ", ")
     
