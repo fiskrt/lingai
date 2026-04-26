@@ -145,7 +145,7 @@ func mistralChat(prompt: String) async throws -> String {
     return decoded.choices[0].message.content
 }
 
-func openAIChat(prompt: String) async throws -> String {
+func openAIChat(prompt: String, temperature: Double = 0.0) async throws -> String {
     guard !Config.shared.openAIAPIKey.isEmpty else {
         throw NSError(
             domain: "ConfigurationError",
@@ -165,7 +165,7 @@ func openAIChat(prompt: String) async throws -> String {
     let body: [String: Any] = [
         "model": "gpt-4o-mini",
         "messages": [["role": "user", "content": prompt]],
-        "temperature": 0.2
+        "temperature": temperature
     ]
     request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -260,6 +260,15 @@ struct LLMStoryFlashcardsResponse: Codable {
     let cards: [LLMStoryFlashcard]
 }
 
+struct LLMGrammarTranslationPrompt: Codable {
+    let english_sentence: String
+    let why_this_sentence: String
+}
+
+struct LLMGrammarTranslationBatchResponse: Codable {
+    let examples: [LLMGrammarTranslationPrompt]
+}
+
 func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslation {
     let direction = isGerman ? "German -> English" : "English -> German"
     let sourceLanguage = isGerman ? "German" : "English"
@@ -317,6 +326,75 @@ func translate_llm(phrase: String, isGerman: Bool) async throws -> LLMTranslatio
 
     let translation = try JSONDecoder().decode(LLMTranslation.self, from: jsonData)
     return translation
+}
+
+func generateGrammarTranslationSentence(topics: [String], level: String = "A1") async throws -> LLMGrammarTranslationPrompt {
+    let topicsString = topics.joined(separator: ", ")
+    let prompt = """
+    You are a German teacher. Create a \(level) level sentence to translate in english.
+    The sentence should require grammar knowledge in the following topics: \(topicsString)
+
+    Return ONLY valid JSON with this exact schema:
+    {
+      "english_sentence": "The English sentence that should be translated to German.",
+      "why_this_sentence": "Short beginner-friendly note about what this sentence trains"
+    }
+    """
+
+    let response = try await openAIChat(prompt: prompt, temperature: 0.7)
+    print("Grammar translation sentence response: \(response)")
+    guard let jsonStart = response.firstIndex(of: "{"),
+          let jsonEnd = response.lastIndex(of: "}") else {
+        throw NSError(domain: "ParseError", code: 10, userInfo: [NSLocalizedDescriptionKey: "Could not find JSON in grammar sentence response."])
+    }
+
+    
+    let jsonData = Data(response[jsonStart...jsonEnd].utf8)
+    return try JSONDecoder().decode(LLMGrammarTranslationPrompt.self, from: jsonData)
+}
+
+func generateGrammarTranslationSentenceBatch(topics: [String], level: String = "A1", count: Int = 5) async throws -> [LLMGrammarTranslationPrompt] {
+    let topicsString = topics.joined(separator: ", ")
+    let prompt = """
+    You are a German teacher. Create a \(level)-level translation exercises with \(count) english sentences
+    that should be translated. Each of the \(level) sentences should require grammar knowledge in topics: \(topicsString). Re-read the sentence to make sure it is actually said in real conversions and that it's fun and creative, so we have FUNN!!
+
+    Return ONLY valid JSON with this exact schema:
+    {
+      "examples": [
+        {
+          "english_sentence": "A natural English sentence the student should translate to German",
+          "why_this_sentence": "Short beginner-friendly note about what this sentence trains"
+        }
+      ]
+    }
+    """
+
+    let response = try await openAIChat(prompt: prompt, temperature: 0.7)
+    print("Grammar translation sentence response: \(response)")
+    guard let jsonStart = response.firstIndex(of: "{"),
+          let jsonEnd = response.lastIndex(of: "}") else {
+        throw NSError(domain: "ParseError", code: 12, userInfo: [NSLocalizedDescriptionKey: "Could not find JSON in grammar sentence batch response."])
+    }
+
+    let jsonData = Data(response[jsonStart...jsonEnd].utf8)
+    let parsed = try JSONDecoder().decode(LLMGrammarTranslationBatchResponse.self, from: jsonData)
+    return parsed.examples
+}
+
+func gradeGrammarTranslation(englishSentence: String, studentGerman: String, topics: [String]) async throws -> String {
+    let topicsString = topics.joined(separator: ", ")
+    let prompt = """
+    I'm learning german, and just translated the English sentence "\(englishSentence)" to "\(studentGerman)" in German. Let me know if it's correct or not.
+    
+    Follow these rules:
+        - Always have inutitive explanations that break down and not just state facts.
+        - Try to be consice.
+        - If it's in the past always use the simple form. So NEVER use Pretäritum, e.g. Wollte.
+    If my translation is incorrect, tell me the correct answer, and give feedback at a very simple level (like explain the word order/it's genus/ and other relevant grammar facts).
+    """
+
+    return try await openAIChat(prompt: prompt)
 }
 
 func generateStoryFlashcards(from text: String, focus: String) async throws -> [LLMStoryFlashcard] {
